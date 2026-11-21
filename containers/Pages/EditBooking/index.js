@@ -1,346 +1,194 @@
-import React, { Fragment, useState } from 'react';
-import {
-  KeyboardDatePicker,
-  MuiPickersUtilsProvider,
-  KeyboardTimePicker,
-} from '@material-ui/pickers';
-import MomentUtils from '@date-io/moment';
-
-import { connect } from 'react-redux';
+import React, { Fragment, useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet';
+import { toast } from 'react-toastify';
+import { connect } from 'react-redux';
 import { compose } from 'redux';
-import {
-  makeStyles,
-  Grid,
-  MenuItem,
-  FormControlLabel,
-  TextField,
-  Radio,
-} from '@material-ui/core';
+import { Link, useHistory, useParams } from 'react-router-dom';
 import Card from 'components/Card/Loadable';
+import BookingForm from 'components/BookingForm';
+import { db, serverTimestamp } from 'utils/firebase';
+import {
+  BOOKINGS_COLLECTION,
+  deserializeBooking,
+  isRoomAvailable,
+  roomStatusForBooking,
+  serializeBooking,
+} from 'utils/bookings';
+import { ROOMS_COLLECTION } from 'utils/rooms';
 
-const useStyles = makeStyles(() => ({
-  menu: {
-    width: 200,
-  },
-}));
+export const EditBooking = () => {
+  const { id } = useParams();
+  const history = useHistory();
 
-const rooms = [
-  {
-    value: 'single',
-    label: 'Single',
-  },
-  {
-    value: 'double',
-    label: 'Double',
-  },
-  {
-    value: 'quad',
-    label: 'Quad',
-  },
-  {
-    value: 'king',
-    label: 'King',
-  },
-  {
-    value: 'queen',
-    label: 'Queen',
-  },
-];
+  const [booking, setBooking] = useState(null);
+  const [loading, setLoading] = useState(Boolean(id));
+  const [missing, setMissing] = useState(!id);
+  const [saving, setSaving] = useState(false);
+  const [rooms, setRooms] = useState([]);
+  const [bookings, setBookings] = useState([]);
 
-const EditBooking = () => {
-  const classes = useStyles();
-  const [values, setValues] = React.useState({
-    name: 'Cat in the Hat',
-    guest: '',
-    multiline: 'Controlled',
-    room: 'Double',
-  });
-  
+  // Room picker + availability check (the booking being edited is ignored).
+  useEffect(() => {
+    const unsubscribes = [
+      db.collection(ROOMS_COLLECTION).onSnapshot(
+        snapshot => setRooms(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))),
+        error => console.error('Could not load rooms:', error),
+      ),
+      db.collection(BOOKINGS_COLLECTION).onSnapshot(
+        snapshot => setBookings(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))),
+        error => console.error('Could not load bookings:', error),
+      ),
+    ];
 
-  const [selectedValue, setSelectedValue] = React.useState('female');
+    return () => unsubscribes.forEach(unsubscribe => unsubscribe());
+  }, []);
 
-  function radioChangeHandler(event) {
-    setSelectedValue(event.target.value);
+  useEffect(() => {
+    if (!id) {
+      setMissing(true);
+      setLoading(false);
+      return undefined;
+    }
+
+    let active = true;
+    setLoading(true);
+
+    db.collection(BOOKINGS_COLLECTION)
+      .doc(id)
+      .get()
+      .then(doc => {
+        if (!active) return;
+        if (!doc.exists) {
+          setBooking(null);
+          setMissing(true);
+        } else {
+          setBooking({ ...deserializeBooking(doc.data()), id: doc.id });
+          setMissing(false);
+        }
+      })
+      .catch(error => {
+        if (!active) return;
+        console.error('Could not load booking:', error);
+        toast.error(`Could not load booking: ${error.message}`);
+        setMissing(true);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [id]);
+
+  const handleSave = async form => {
+    setSaving(true);
+    const payload = serializeBooking(form);
+
+    try {
+      const duplicates = await db
+        .collection(BOOKINGS_COLLECTION)
+        .where('bkId', '==', payload.bkId)
+        .get();
+
+      if (duplicates.docs.some(doc => doc.id !== id)) {
+        toast.error(`Booking ID "${payload.bkId}" is already in use`);
+        return;
+      }
+
+      if (
+        payload.roomId &&
+        !isRoomAvailable(bookings, {
+          roomId: payload.roomId,
+          arrivalDate: payload.arrivalDate,
+          departureDate: payload.departureDate,
+          ignoreId: id,
+        })
+      ) {
+        toast.error(`Room ${payload.roomNumber} is already booked for those dates`);
+        return;
+      }
+
+      await db.collection(BOOKINGS_COLLECTION).doc(id).update({
+        ...payload,
+        updatedAt: serverTimestamp(),
+      });
+
+      // Room handover: free the previous room and occupy the new one.
+      const nextRoomStatus = roomStatusForBooking(payload.statusValue);
+      const previousRoomId = booking.roomId;
+
+      if (nextRoomStatus && previousRoomId && previousRoomId !== payload.roomId) {
+        await db
+          .collection(ROOMS_COLLECTION)
+          .doc(previousRoomId)
+          .set({ status: 'available', updatedAt: serverTimestamp() }, { merge: true });
+      }
+
+      if (nextRoomStatus && payload.roomId) {
+        await db
+          .collection(ROOMS_COLLECTION)
+          .doc(payload.roomId)
+          .set({ status: nextRoomStatus, updatedAt: serverTimestamp() }, { merge: true });
+      }
+
+      toast.success(`Booking "${payload.bkId}" updated`);
+      history.push('/view-booking');
+    } catch (error) {
+      console.error('Could not update booking:', error);
+      toast.error(`Could not update booking: ${error.message}`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (missing || !id) {
+    return (
+      <Card title="Edit Booking">
+        <p className="bookingFormEmpty">
+          No booking selected. Open one from the{' '}
+          <Link to="/view-booking">bookings list</Link> to edit it.
+        </p>
+      </Card>
+    );
   }
 
-  const handleChange = name => event => {
-    setValues({ ...values, [name]: event.target.value });
-  };
-  const [selectedDate, handleDateChange] = useState(new Date());
-
-  const [selectedDate2, handleDate2Change] = useState(new Date());
-
-  const [selectedTime, handleTimeChange] = useState(new Date());
-
-  const [selectedTime2, handleTime2Change] = useState(new Date());
+  if (loading || !booking) {
+    return (
+      <Card title="Edit Booking">
+        <p className="bookingFormEmpty">Loading booking…</p>
+      </Card>
+    );
+  }
 
   return (
     <Fragment>
       <Helmet>
         <title>Edit Booking</title>
       </Helmet>
-      <Grid container spacing={3}>
-        <Grid item xl={6} md={6} sm={12} xs={12} style={{marginLeft:750}}>
-          <TextField
-            label="Search"
-            placeholder="Booking ID"
-            type="search"
-            className='inputField'
-            fullWidth
-            variant="outlined"
-          />
-        </Grid>
-        <Grid style={{marginBottom:20}}>
-        </Grid>
-      </Grid>
-      <Card>
-      
-        <form noValidate>
-     
-          <Grid container spacing={3}>
-
-            <Grid item xl={4} md={3} sm={6} xs={12}>
-              <TextField
-                required
-                label="Booking ID"
-                //defaultValue="Your ID" 
-                className="inputField"
-                fullWidth
-                variant="outlined"
-                name="bookingId"
-              />
-            </Grid>
-          </Grid>
-
-          <Grid container spacing={3}>
-            <Grid item xl={6} md={6} sm={12} xs={12}>
-              <TextField
-                required
-                label="First Name"
-                className="inputField"
-                fullWidth
-                variant="outlined"
-                name="firstName"
-              />
-            </Grid>
-            <Grid item xl={6} md={6} sm={12} xs={12}>
-              <TextField
-                required
-                label="Last Name"
-                className="inputField"
-                fullWidth
-                variant="outlined"
-                name="lastName"
-              />
-            </Grid>
-
-            <Grid item xs={12}>
-              Gender:
-            </Grid>
-            <Grid item xs={12}>
-              <FormControlLabel
-                control={
-                  <Radio
-                    checked={selectedValue === 'female'}
-                    onChange={radioChangeHandler}
-                    value="female"
-                    name="radio-button-demo"
-                    classes={{
-                      root: 'radioButton defaultRadioButton',
-                      checked: 'radioCheckd',
-                    }}
-                  />
-                }
-                label="Female"
-                labelPlacement="end"
-              />
-              <FormControlLabel
-                control={
-                  <Radio
-                    checked={selectedValue === 'male'}
-                    onChange={radioChangeHandler}
-                    value="male"
-                    name="radio-button-demo"
-                    classes={{
-                      root: 'radioButton defaultRadioButton',
-                      checked: 'radioCheckd',
-                    }}
-                  />
-                }
-                label="Male"
-                labelPlacement="end"
-              />
-              <FormControlLabel
-                control={
-                  <Radio
-                    checked={selectedValue === 'others'}
-                    onChange={radioChangeHandler}
-                    value="others"
-                    name="radio-button-demo"
-                    classes={{
-                      root: 'radioButton defaultRadioButton',
-                      checked: 'radioCheckd',
-                    }}
-                  />
-                }
-                label="Others"
-                labelPlacement="end"
-              />
-            </Grid>
-
-            <Grid item xl={6} md={6} sm={12} xs={12}>
-              <TextField
-                label="Email"
-                className="inputField"
-                type="email"
-                name="email"
-                autoComplete="email"
-                fullWidth
-                variant="outlined"
-              />
-            </Grid>
-            <Grid item xl={6} md={6} sm={12} xs={12}>
-              <TextField
-                required
-                label="Phone Number"
-                //defaultValue="Your ID"
-                className="inputField"
-                fullWidth
-                variant="outlined"
-                name="phoneNo"
-              />
-            </Grid>
-            <Grid item xl={6} md={6} sm={12} xs={12}>
-              <TextField
-                select
-                label="Room Type"
-                className="inputField"
-                fullWidth
-                value={values.room}
-                onChange={handleChange('room')}
-                SelectProps={{
-                  MenuProps: {
-                    className: classes.menu,
-                  },
-                }}
-                helperText="select your room"
-                variant="outlined"
-              >
-                {rooms.map(option => (
-                  <MenuItem key={option.value} value={option.value}>
-                    {option.label}
-                  </MenuItem>
-                ))}
-              </TextField>
-            </Grid>
-            <Grid item xl={6} md={6} sm={12} xs={12}>
-              <TextField
-                label="Number Of Guests"
-                value={values.guest}
-                onChange={handleChange('guest')}
-                type="number"
-                fullWidth
-                className="inputField"
-                InputLabelProps={{
-                  shrink: true,
-                }}
-                variant="outlined"
-              />
-            </Grid>
-
-            <MuiPickersUtilsProvider utils={MomentUtils}>
-              <Grid item xl={6} md={6} sm={12} xs={12}>
-                <KeyboardDatePicker
-                  label="Arrival Date"
-                  fullWidth
-                  value={selectedDate}
-                  placeholder="10/10/2018"
-                  variant="inline"
-                  inputVariant="outlined"
-                  onChange={date => handleDateChange(date)}
-                  minDate={new Date()}
-                  format="DD-MM-YYYY"
-                  InputAdornmentProps={{ position: 'end' }}
-                  className="datePicker"
-                />
-              </Grid>
-            </MuiPickersUtilsProvider>
-            <MuiPickersUtilsProvider utils={MomentUtils}>
-              <Grid item md={6} xs={12}>
-                <KeyboardTimePicker
-                  label="Arrival Time"
-                  placeholder="08:00 AM"
-                  mask="__:__ _M"
-                  //type="time"
-                  fullWidth
-                  name="arrivalTime"
-                  value={selectedTime}
-                  variant="inline"
-                  inputVariant="outlined"
-                  InputAdornmentProps={{ position: 'end' }}
-                  onChange={date => handleTimeChange(date)}
-                  className="timepicker"
-                />
-              </Grid>
-            </MuiPickersUtilsProvider>
-            <MuiPickersUtilsProvider utils={MomentUtils}>
-              <Grid item xl={6} md={6} sm={12} xs={12}>
-                <KeyboardDatePicker
-                  label="Departure Date"
-                  fullWidth
-                  value={selectedDate2}
-                  variant="inline"
-                  inputVariant="outlined"
-                  placeholder="10/10/2018"
-                  onChange={date => handleDate2Change(date)}
-                  minDate={new Date()}
-                  format="DD-MM-YYYY"
-                  InputAdornmentProps={{ position: 'end' }}
-                  className="datePicker"
-                  autoOk={true}
-                />
-              </Grid>
-            </MuiPickersUtilsProvider>
-            <MuiPickersUtilsProvider utils={MomentUtils}>
-              <Grid item md={6} xs={12}>
-                <KeyboardTimePicker
-                  label="Departure Time"
-                  placeholder="08:00 AM"
-                  mask="__:__ _M"
-                  fullWidth
-                  name="departureTime"
-                  value={selectedTime2}
-                  variant="inline"
-                  inputVariant="outlined"
-                  InputAdornmentProps={{ position: 'end' }}
-                  onChange={date => handleTime2Change(date)}
-                  className="timepicker"
-                />
-              </Grid>
-            </MuiPickersUtilsProvider>
-            <Grid align="center">
-              <input className="btn btn-submit bg-success" type="submit" />
-            </Grid>
-            <Grid align="center">
-              <input className="btn btn-reset bg-default" type="reset" />
-            </Grid>
-          </Grid>
-        </form>
+      <Card
+        title={`Edit booking ${booking.bkId}`}
+        subtitle={`${booking.fname} ${booking.lname}`.trim()}
+      >
+        <BookingForm
+          initialBooking={booking}
+          rooms={rooms}
+          bookings={bookings}
+          ignoreBookingId={id}
+          submitLabel="Save changes"
+          submitting={saving}
+          onSubmit={handleSave}
+          onCancel={() => history.push('/view-booking')}
+        />
       </Card>
     </Fragment>
   );
 };
 
 function mapDispatchToProps(dispatch) {
-  return {
-    dispatch,
-  };
+  return { dispatch };
 }
 
-const withConnect = connect(
-  null,
-  mapDispatchToProps,
-);
+const withConnect = connect(null, mapDispatchToProps);
 
 export default compose(withConnect)(EditBooking);

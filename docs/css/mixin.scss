@@ -1,0 +1,96 @@
+// ---------------------------------------------------------------------------
+// Design tokens — HotelsQuad PMS
+//
+// One palette/scale shared by every screen. `$baseColor` / `$textColor` /
+// `$headingColor` are the historic names used across the component stylesheets,
+// keep them in sync with the new palette below.
+// ---------------------------------------------------------------------------
+
+$navy: #1b2a5f;
+$navyDark: #132048;
+$navyLight: #2c3f7d;
+$navySoft: #eef1fb;
+$accent: #2f5bea;
+$indigo: #3f4fb3;
+$violet: #6d5ce7;
+
+$headingColor: #101a3d;
+$textColor: #5b6478;
+$mutedColor: #8a93a8;
+
+$borderColor: #e7eaf4;
+$surface: #ffffff;
+$bodyBg: #f6f7fc;
+$inputBg: #f4f6fd;
+$inputBgHover: #eef1fb;
+
+// ---------------------------------------------------------------------------
+// Gradients — used sparingly for the brand mark, primary CTAs and hero panels
+// so the palette stays calm but the important actions stand out.
+// ---------------------------------------------------------------------------
+$gradientNavy: linear-gradient(135deg, #16224d 0%, #23336f 48%, #3a4bb0 100%);
+$gradientAccent: linear-gradient(135deg, #2f5bea 0%, #5b5ee8 52%, #8a5cf0 100%);
+$gradientAurora: linear-gradient(135deg, #eef1ff 0%, #f7f5ff 45%, #eefaf7 100%);
+$gradientSheen: linear-gradient(180deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0) 100%);
+
+$success: #1f9d6b;
+$successSoft: #e6f6ef;
+$warning: #d99425;
+$warningSoft: #fdf3e2;
+$danger: #d64545;
+$dangerSoft: #fdecec;
+$info: #2f7fd4;
+$infoSoft: #e8f2fd;
+
+// Historic aliases used by the component stylesheets.
+$baseColor: $navy;
+$baseColorDark: $navyDark;
+
+$fontFamily: 'Inter', 'Plus Jakarta Sans', 'Segoe UI', system-ui, -apple-system,
+  'Helvetica Neue', Arial, sans-serif;
+
+$radiusSm: 10px;
+$radiusMd: 12px;
+$radiusLg: 16px;
+$radiusPill: 999px;
+
+$shadowCard: 0 6px 24px rgba(20, 32, 74, 0.06);
+$shadowCardHover: 0 18px 44px rgba(20, 32, 74, 0.12);
+$shadowPop: 0 18px 44px rgba(20, 32, 74, 0.16);
+$shadowGlow: 0 14px 30px rgba(47, 91, 234, 0.28);
+
+$breakpoints: (
+  xs: 575px,
+  sm: 767px,
+  md: 991px,
+  lg: 1279px,
+  xl: 1440px,
+);
+
+@mixin respond($breakpoint) {
+  @if map-has-key($breakpoints, $breakpoint) {
+    @media (max-width: #{map-get($breakpoints, $breakpoint)}) {
+      @content;
+    }
+  } @else {
+    @warn "Unknown breakpoint `#{$breakpoint}`.";
+  }
+}
+
+@mixin transition($property: all, $duration: 0.2s, $easing: ease-in-out) {
+  transition: $property $duration $easing;
+}
+
+@mixin flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@mixin box-shadow($shadow: $shadowCard) {
+  box-shadow: $shadow;
+}
+
+@mixin border-radius($radius: $radiusLg) {
+  border-radius: $radius;
+}

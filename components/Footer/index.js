@@ -1,14 +1,11 @@
 import React from 'react';
-import { Grid, Button } from '@material-ui/core'
-import './style.scss'
-const Footer = ({ className }) => {
-    return (
-        <footer className={`footerArea ${className}`}>
-            <ul className="footerLeft">
-               
-            </ul>
-           
-        </footer>
-    )
-}
+import './style.scss';
+
+const Footer = ({ className = '' }) => (
+  <footer className={`footerArea ${className}`}>
+    <span>&copy; {new Date().getFullYear()} HotelsQuad PMS · All rights reserved</span>
+    <span className="footerMuted">Firestore-powered property management</span>
+  </footer>
+);
+
 export default Footer;

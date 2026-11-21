@@ -1,0 +1,56 @@
+@import '../../../docs/css/mixin.scss';
+
+.reportsStats {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+
+  li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px;
+    border: 1px solid $borderColor;
+    border-radius: 12px;
+    background: linear-gradient(140deg, #ffffff 0%, #fbfcff 100%);
+    font-size: 13.5px;
+    color: $textColor;
+    @include transition(border-color, 0.15s);
+
+    &:hover {
+      border-color: rgba(47, 91, 234, 0.16);
+    }
+
+    span {
+      font-weight: 500;
+      color: $headingColor;
+    }
+  }
+}
+
+.reportsTable {
+  th,
+  td {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+}
+
+.reportsStats--money {
+  li {
+    padding: 14px 14px;
+
+    strong {
+      margin-left: auto;
+      font-size: 13.5px;
+      font-weight: 700;
+      color: $headingColor;
+      text-align: right;
+    }
+
+    .isDue {
+      color: #b42318;
+    }
+  }
+}
+

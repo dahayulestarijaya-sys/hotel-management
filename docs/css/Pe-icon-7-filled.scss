@@ -1,0 +1,32 @@
+// ---------------------------------------------------------------------------
+// Pe-icon-7 icon set
+//
+// The template font files are not bundled with this repository; the icons are
+// mapped onto Font Awesome so the markup keeps working.
+// ---------------------------------------------------------------------------
+
+[class^='pe-7s-'],
+[class*=' pe-7s-'] {
+  display: inline-block;
+  font: normal normal normal 14px/1 FontAwesome;
+  font-size: inherit;
+  text-rendering: auto;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.pe-7s-angle-left::before {
+  content: '\f104';
+}
+
+.pe-7s-angle-right::before {
+  content: '\f105';
+}
+
+.pe-7s-close::before {
+  content: '\f00d';
+}
+
+.pe-7s-search::before {
+  content: '\f002';
+}

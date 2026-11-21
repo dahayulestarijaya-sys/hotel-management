@@ -1,6 +1,6 @@
 /**
  *
- * Tests for BlankPage
+ * Tests for ViewInventory
  *
  * @see https://github.com/react-boilerplate/react-boilerplate/tree/master/docs/testing
  *
@@ -9,26 +9,25 @@
 import React from 'react';
 import { render } from 'react-testing-library';
 import { IntlProvider } from 'react-intl';
+import { MemoryRouter } from 'react-router-dom';
 // import 'jest-dom/extend-expect'; // add some helpful assertions
 
-import { BlankPage } from '../index';
-import { DEFAULT_LOCALE } from '../../../i18n';
+import { ViewInventory } from '../index';
+import { DEFAULT_LOCALE } from '../../../../i18n';
 
-describe('<BlankPage />', () => {
+describe('<ViewInventory />', () => {
   it('Expect to not log errors in console', () => {
     const spy = jest.spyOn(global.console, 'error');
     const dispatch = jest.fn();
     render(
-      <IntlProvider locale={DEFAULT_LOCALE}>
-        <BlankPage dispatch={dispatch} />
-      </IntlProvider>,
+      <MemoryRouter><IntlProvider locale={DEFAULT_LOCALE}>
+        <ViewInventory dispatch={dispatch} />
+      </IntlProvider></MemoryRouter>,
     );
     expect(spy).not.toHaveBeenCalled();
   });
 
-  it('Expect to have additional unit tests specified', () => {
-    expect(true).toEqual(false);
-  });
+  // TODO: add component specific unit tests.
 
   /**
    * Unskip this test to use it
@@ -39,9 +38,9 @@ describe('<BlankPage />', () => {
     const {
       container: { firstChild },
     } = render(
-      <IntlProvider locale={DEFAULT_LOCALE}>
-        <BlankPage />
-      </IntlProvider>,
+      <MemoryRouter><IntlProvider locale={DEFAULT_LOCALE}>
+        <ViewInventory />
+      </IntlProvider></MemoryRouter>,
     );
     expect(firstChild).toMatchSnapshot();
   });

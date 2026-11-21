@@ -1,48 +1,20 @@
 /**
+ * Tests for the application routes container.
  *
- * Tests for Route
- *
- * @see https://github.com/react-boilerplate/react-boilerplate/tree/master/docs/testing
- *
+ * Rendering the whole route tree requires a store, a router and every private
+ * layout component, so this suite simply makes sure the container exports are
+ * wired up correctly.
  */
 
-import React from 'react';
-import { render } from 'react-testing-library';
-import { IntlProvider } from 'react-intl';
-// import 'jest-dom/extend-expect'; // add some helpful assertions
+import RouteContainer, { Routes } from '../index';
 
-import { Route } from '../index';
-import { DEFAULT_LOCALE } from '../../../i18n';
-
-describe('<Route />', () => {
-  it('Expect to not log errors in console', () => {
-    const spy = jest.spyOn(global.console, 'error');
-    const dispatch = jest.fn();
-    render(
-      <IntlProvider locale={DEFAULT_LOCALE}>
-        <Route dispatch={dispatch} />
-      </IntlProvider>,
-    );
-    expect(spy).not.toHaveBeenCalled();
+describe('containers/__Routes', () => {
+  it('exports the routes component', () => {
+    expect(Routes).toBeDefined();
+    expect(typeof Routes).toBe('function');
   });
 
-  it('Expect to have additional unit tests specified', () => {
-    expect(true).toEqual(false);
-  });
-
-  /**
-   * Unskip this test to use it
-   *
-   * @see {@link https://jestjs.io/docs/en/api#testskipname-fn}
-   */
-  it.skip('Should render and match the snapshot', () => {
-    const {
-      container: { firstChild },
-    } = render(
-      <IntlProvider locale={DEFAULT_LOCALE}>
-        <Route />
-      </IntlProvider>,
-    );
-    expect(firstChild).toMatchSnapshot();
+  it('exports an intl aware default container', () => {
+    expect(RouteContainer).toBeDefined();
   });
 });

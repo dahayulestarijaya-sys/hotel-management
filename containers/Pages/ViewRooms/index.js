@@ -1,306 +1,249 @@
-import React, { Fragment } from 'react';
-import PropTypes from 'prop-types';
-import { connect } from 'react-redux';
-import { Helmet } from 'react-helmet';
-import { FormattedMessage } from 'react-intl';
-import { compose } from 'redux';
-import { Grid, TextField, Slider, withStyles } from '@material-ui/core'
-import Card from 'components/Card/Loadable'
-import '../../../components/Forms/InputComponent/style.scss'
-import Fab from '@material-ui/core/Fab';
-import AddIcon from '@material-ui/icons/Add';
-import EditIcon from '@material-ui/icons/Edit';
-import DeleteIcon from '@material-ui/icons/Delete';
+import React, { Fragment, useEffect, useMemo, useState } from 'react';
 import { Badge, CardBody, Table } from 'reactstrap';
-import {Link} from "react-router-dom";
-// import SimpleTable from '../../../components/Tables/MaterialTable/components/simpleTable'
-// import '../../../components/Tables/MaterialTable/style.scss'
-import OutlinedTextFields from '../../../components/Forms/InputComponent/components/outline'
+import { connect } from 'react-redux';
+import { compose } from 'redux';
+import { Helmet } from 'react-helmet';
+import { toast } from 'react-toastify';
+import { Link } from 'react-router-dom';
+import {
+  CircularProgress,
+  Grid,
+  InputAdornment,
+  Slider,
+  TextField,
+} from '@material-ui/core';
+import { Download, Pencil, Plus, Search as SearchIcon, Trash2 } from 'lucide-react';
+import Card from 'components/Card/Loadable';
+import { db } from 'utils/firebase';
+import { csvFileName, downloadCsv, roomsToCsv } from 'utils/csv';
+import {
+  ROOMS_COLLECTION,
+  acTypeLabel,
+  filterRooms,
+  filterRoomsByBeds,
+  formatRent,
+  roomStatusColor,
+  roomStatusLabel,
+  roomTypeLabel,
+  sortRooms,
+} from 'utils/rooms';
 
+export const ViewRooms = () => {
+  const [rooms, setRooms] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
+  const [search, setSearch] = useState('');
+  const [minBeds, setMinBeds] = useState(1);
+  const [deletingId, setDeletingId] = useState('');
 
+  useEffect(() => {
+    // `onSnapshot` returns an unsubscribe function: returning it from the effect
+    // detaches the live listener when the page unmounts.
+    const unsubscribe = db.collection(ROOMS_COLLECTION).onSnapshot(
+      snapshot => {
+        setRooms(sortRooms(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))));
+        setLoadError('');
+        setLoading(false);
+      },
+      error => {
+        // Usually a Firestore rules problem or a database that was never created.
+        console.error('Could not load rooms:', error);
+        setLoadError(error.message);
+        setLoading(false);
+      },
+    );
 
-import './style.scss'
-import messages from './messages';
+    return unsubscribe;
+  }, []);
 
+  const visibleRooms = useMemo(
+    () => filterRoomsByBeds(filterRooms(rooms, search), minBeds),
+    [rooms, search, minBeds],
+  );
 
-const PrettoSlider = withStyles({
-  root: {
-    color: '#52af77',
-    height: 8,
-  },
-  thumb: {
-    height: 24,
-    width: 24,
-    backgroundColor: '#fff',
-    border: '2px solid currentColor',
-    marginTop: -8,
-    marginLeft: -12,
-    '&:focus,&:hover,&$active': {
-      boxShadow: 'inherit',
-    },
-  },
-  active: {},
-  valueLabel: {
-    left: 'calc(-50% + 4px)',
-  },
-  track: {
-    height: 8,
-    borderRadius: 4,
-  },
-  rail: {
-    height: 8,
-    borderRadius: 4,
-  },
-})(Slider);
-const ViewRooms = () => {
+  const handleExport = () => {
+    if (visibleRooms.length === 0) return;
+    const filename = csvFileName('rooms');
+    downloadCsv(filename, roomsToCsv(visibleRooms));
+    toast.success(`Exported ${visibleRooms.length} room(s) to ${filename}`);
+  };
+
+  const handleDelete = async room => {
+    // eslint-disable-next-line no-alert
+    const confirmed = window.confirm(
+      `Delete room "${room.roomNumber}"? This cannot be undone.`,
+    );
+    if (!confirmed) return;
+
+    setDeletingId(room.id);
+    try {
+      await db.collection(ROOMS_COLLECTION).doc(room.id).delete();
+      toast.success(`Room "${room.roomNumber}" deleted`);
+    } catch (error) {
+      console.error('Could not delete room:', error);
+      toast.error(`Could not delete room: ${error.message}`);
+    } finally {
+      setDeletingId('');
+    }
+  };
+
   return (
     <Fragment>
       <Helmet>
         <title>View Rooms</title>
       </Helmet>
-      <Grid container spacing={3}>
-        <Grid item xl={4} md={4} sm={12} xs={12}>
-          <Link to="/add-rooms">
-            <Fab color="primary" size="small" aria-label="add" style={{marginRight: 20}} >
-              <AddIcon />
-            </Fab> 
-          </Link> <b>Add New</b>
+
+      {loadError && (
+        <Grid className="pageError">
+          Could not load rooms: {loadError}
         </Grid>
-        <Grid item xl={4} md={4} sm={12} xs={12} className="sliderMain">
-          <p>Sort By Bed Capacity </p> 
-          <PrettoSlider
-            valueLabelDisplay="auto"
-            defaultValue={20}
-          />
-        </Grid> 
-        <Grid item xl={4} md={4} sm={12} xs={12}>
-          <TextField
-            label="Search"
-            type="search"
-            className='inputField'
-            fullWidth
-            variant="outlined"
-          />
-        </Grid >
-        
-        {/* //<div className={classes.root}> */}
-        
-      
+      )}
 
-        <Grid item xs={12}>
-          <Card>
-            <CardBody item xl={12} md={12} sm={12} xs={12}>
-        
-              <Grid className="tableResponsive">
-                <Table>
-                  <table className="content">
-              
-	      <thead>
-                      <tr>
-                        <th>Room Number</th>
-                        <th>Room Type</th>
-                        <th>Ac/Non Ac</th>
-                        <th>Bed Capacity</th>
-                        <th>Phone</th>
-                        <th>Rent</th>
-                        <th>Status</th>
-                        <th>Action</th>
-                      </tr>
-                    </thead>
+      <Card>
+        <CardBody>
+          <Grid container spacing={2} alignItems="center" className="pageToolbar">
+            <Grid item xs={12} md={4} className="pageToolbar__left">
+              <Link to="/add-rooms" className="uiButton uiButton--primary">
+                <Plus size={16} />
+                New room
+              </Link>
+              <button
+                type="button"
+                className="uiButton"
+                onClick={handleExport}
+                disabled={visibleRooms.length === 0}
+              >
+                <Download size={16} />
+                Export CSV
+              </button>
+              <span className="uiPill">
+                {visibleRooms.length} of {rooms.length} room
+                {rooms.length === 1 ? '' : 's'}
+              </span>
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <TextField
+                name="search"
+                placeholder="Room number, type, status, phone…"
+                type="search"
+                className="inputField"
+                fullWidth
+                variant="outlined"
+                value={search}
+                onChange={event => setSearch(event.target.value)}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <div className="roomBedFilter">
+                <span>
+                  Minimum bed capacity: <b>{minBeds}</b>
+                </span>
+                <Slider
+                  value={minBeds}
+                  min={1}
+                  max={10}
+                  step={1}
+                  marks
+                  valueLabelDisplay="auto"
+                  aria-label="Minimum bed capacity"
+                  onChange={(event, value) => setMinBeds(Array.isArray(value) ? value[0] : value)}
+                />
+              </div>
+            </Grid>
+          </Grid>
 
-                    <tbody>
-                      <tr className="tr">
-                        <td>101</td>
-                        <td>Single</td>
-                        <td>Ac</td>
-                        <td>5</td>
-                        <td>412-206-6478</td>
-                        <td>350</td>
-                        <td>
-                          <Badge color="success">Active</Badge>
-                        </td>
-                        <td>  
-                          <Link to="/edit-rooms"><Fab color="secondary" aria-label="edit" size="small" style={{ marginRight: 10 }}><EditIcon /></Fab> </Link>
-                          <Fab color="secondary" aria-label="delete" size="small"><DeleteIcon /></Fab> 
-                        </td>
-                        
-                      </tr>
+          <Table responsive className="roomTable">
+            <thead>
+              <tr>
+                <th>Room Number</th>
+                <th>Room Type</th>
+                <th>Phone</th>
+                <th>Rent / Night</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading && (
+                <tr>
+                  <td colSpan={6} className="pageState">
+                    <CircularProgress size={18} /> Loading rooms…
+                  </td>
+                </tr>
+              )}
 
-                      <tr className="te">
-                        <td>102</td>
-                        <td>Double</td>
-                        <td>Ac</td>
-                        <td>5</td>
-                        <td>412-206-6478</td>
-                        <td>350</td>
-                        <td>
-                          <Badge color="secondary">Inactive</Badge>
-                        </td>
-                        <td>  
-                          <Link to="/edit-rooms"><Fab color="secondary" aria-label="edit" size="small" style={{ marginRight: 10 }}><EditIcon /></Fab> </Link>
-                          <Fab color="secondary" aria-label="delete" size="small"><DeleteIcon /></Fab> 
-                        </td>
-                        
-                      </tr>
+              {!loading && visibleRooms.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="pageState">
+                    {rooms.length === 0
+                      ? 'No rooms yet. Create the first one with “Add Room”.'
+                      : 'No rooms match your filters.'}
+                  </td>
+                </tr>
+              )}
 
-                      <tr className="tr">
-                        <td>103</td>
-                        <td>Quad</td>
-                        <td>Ac</td>
-                        <td>5</td>
-                        <td>979 - 488 - 2394</td>
-                        <td>350</td>
-                        <td>
-                          <Badge color="warning">Pending</Badge>
-                        </td>
-                        <td>  
-                          <Link to="/edit-rooms"><Fab color="secondary" aria-label="edit" size="small" style={{ marginRight: 10 }}><EditIcon /></Fab> </Link>
-                          <Fab color="secondary" aria-label="delete" size="small"><DeleteIcon /></Fab> 
-                        </td>
-                        
-                      </tr>
-
-                      <tr className="te">
-                        <td>104</td>
-                        <td>King</td>
-                        <td>Ac</td>
-                        <td>5</td>
-                        <td>412-206-6478</td>
-                        <td>350</td>
-                        <td>
-                          <Badge color="success">Active</Badge>
-                        </td>
-                        <td>  
-                          <Link to="/edit-rooms"><Fab color="secondary" aria-label="edit" size="small" style={{ marginRight: 10 }}><EditIcon /></Fab> </Link>
-                          <Fab color="secondary" aria-label="delete" size="small"><DeleteIcon /></Fab> 
-                        </td>
-                        
-                      </tr>
-
-                      <tr className="tr">
-                        <td> 105</td>
-                        <td>Queen</td>
-                        <td>Ac</td>
-                        <td>5</td>
-                        <td>979 - 488 - 2394</td>
-                        <td>350</td>
-                        <td>
-                          <Badge color="success">Active</Badge>
-                        </td>
-                        <td>  
-                          <Link to="/edit-rooms"><Fab color="secondary" aria-label="edit" size="small" style={{ marginRight: 10 }}><EditIcon /></Fab> </Link>
-                          <Fab color="secondary" aria-label="delete" size="small"><DeleteIcon /></Fab> 
-                        </td>
-                        
-                      </tr>
-
-                      <tr className="te">
-                        <td>106</td>
-                        <td>Single</td>
-                        <td>Non Ac</td>
-                        <td>5</td>
-                        <td>979 - 488 - 2394</td>
-                        <td>350</td>
-                        <td>
-                          <Badge color="success">Active</Badge>
-                        </td>
-                        <td>  
-                          <Link to="/edit-rooms"><Fab color="secondary" aria-label="edit" size="small" style={{ marginRight: 10 }}><EditIcon /></Fab> </Link>
-                          <Fab color="secondary" aria-label="delete" size="small"><DeleteIcon /></Fab> 
-                        </td>
-                        
-                      </tr>
-
-                      <tr className="tr">
-                        <td>107</td>
-                        <td>Double</td>
-                        <td>Non Ac</td>
-                        <td>5</td>
-                        <td>412-206-6478</td>
-                        <td>350</td>
-                        <td>
-                          <Badge color="danger">Banned</Badge>
-                        </td>
-                        <td>  
-                          <Link to="/edit-rooms"><Fab color="secondary" aria-label="edit" size="small" style={{ marginRight: 10 }}><EditIcon /></Fab> </Link>
-                          <Fab color="secondary" aria-label="delete" size="small"><DeleteIcon /></Fab> 
-                        </td>
-                        
-                      </tr>
-
-                      <tr className="te">
-                        <td>108</td>
-                        <td>Quad</td>
-                        <td>Non Ac</td>
-                        <td>5</td>
-                        <td>979 - 488 - 2394</td>
-                        <td>350</td>
-                        <td>
-                          <Badge color="secondary">Inactive</Badge>
-                        </td>
-                        <td>  
-                          <Link to="/edit-rooms"><Fab color="secondary" aria-label="edit" size="small" style={{ marginRight: 10 }}><EditIcon /></Fab> </Link>
-                          <Fab color="secondary" aria-label="delete" size="small"><DeleteIcon /></Fab> 
-                        </td>
-                       
-                      </tr>
-
-                      <tr className="tr">
-                        <td>109</td>
-                        <td>King</td>
-                        <td>Non Ac</td>
-                        <td>5</td>
-                        <td>979 - 488 - 2394</td>
-                        <td>350</td>
-                        <td>
-                          <Badge color="warning">Pending</Badge>
-                        </td>
-                        <td>  
-                          <Link to="/edit-rooms"><Fab color="secondary" aria-label="edit" size="small" style={{ marginRight: 10 }}><EditIcon /></Fab> </Link>
-                          <Fab color="secondary" aria-label="delete" size="small"><DeleteIcon /></Fab> 
-                        </td>
-                        
-                      </tr>
-
-                      <tr className="te">
-                        <td>110</td>
-                        <td>Queen</td>
-                        <td>Non Ac</td>
-                        <td>5</td>
-                        <td>412-206-6478</td>
-                        <td>350</td>
-                        <td>
-                          <Badge color="success">Active</Badge>
-                        </td>
-                        <td>  
-                          <Link to="/edit-rooms"><Fab color="secondary" aria-label="edit" size="small" style={{ marginRight: 10 }}><EditIcon /></Fab> </Link>
-                          <Fab color="secondary" aria-label="delete" size="small"><DeleteIcon /></Fab> 
-                        </td>
-                       
-                      </tr>
-
-                    </tbody>
-
-                  </table>
-                </Table>
-              </Grid>
-            </CardBody> 
-          </Card>
-        </Grid>
-      </Grid> 
+              {visibleRooms.map(room => (
+                <tr key={room.id}>
+                  <td>
+                    <span className="pageMainValue">{room.roomNumber || '—'}</span>
+                    {room.details && <span className="pageSubValue">{room.details}</span>}
+                  </td>
+                  <td>
+                    <span className="pageMainValue">{roomTypeLabel(room.roomType)}</span>
+                    <span className="pageSubValue">
+                      {acTypeLabel(room.acType)} · {room.bedCapacity || 0} bed
+                      {Number(room.bedCapacity) === 1 ? '' : 's'}
+                    </span>
+                  </td>
+                  <td>{room.phone || '—'}</td>
+                  <td>{formatRent(room.rentPerNight)}</td>
+                  <td>
+                    <Badge color={roomStatusColor(room.status)}>
+                      {roomStatusLabel(room.status)}
+                    </Badge>
+                  </td>
+                  <td>
+                    <div className="pageActions">
+                      <Link
+                        to={`/edit-rooms/${room.id}`}
+                        className="uiIconButton"
+                        aria-label="Edit room"
+                      >
+                        <Pencil size={15} />
+                      </Link>
+                      <button
+                        type="button"
+                        className="uiIconButton uiIconButton--danger"
+                        aria-label="delete room"
+                        disabled={deletingId === room.id}
+                        onClick={() => handleDelete(room)}
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        </CardBody>
+      </Card>
     </Fragment>
   );
-}
+};
 
 function mapDispatchToProps(dispatch) {
-  return {
-    dispatch,
-  };
+  return { dispatch };
 }
 
-const withConnect = connect(
-  null,
-  mapDispatchToProps,
-);
+const withConnect = connect(null, mapDispatchToProps);
 
 export default compose(withConnect)(ViewRooms);
+

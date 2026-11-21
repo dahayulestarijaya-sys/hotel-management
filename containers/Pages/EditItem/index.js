@@ -1,176 +1,136 @@
-import React, { Fragment } from 'react';
-import { connect } from 'react-redux';
+import React, { Fragment, useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet';
-import Card from 'components/Card/Loadable';
+import { toast } from 'react-toastify';
+import { connect } from 'react-redux';
 import { compose } from 'redux';
-import 'react-dropzone-uploader/dist/styles.css';
-import '../../../components/Forms/FormUpload/style.scss';
+import { Link, useHistory, useParams } from 'react-router-dom';
+import Card from 'components/Card/Loadable';
+import InventoryForm from 'components/InventoryForm';
+import { db, serverTimestamp } from 'utils/firebase';
 import {
-  makeStyles,
-  Grid,
-  MenuItem,
-  TextField,
-  Button,
-} from '@material-ui/core';
-import 'sass/elements/buttons.scss';
+  INVENTORY_COLLECTION,
+  deserializeItem,
+  serializeItem,
+} from 'utils/inventory';
 
-const categories = [
-  {
-    value: 'room',
-    label: 'Room',
-  },
-];
+export const EditItem = () => {
+  const { id } = useParams();
+  const history = useHistory();
 
-const useStyles = makeStyles(theme => ({
-  menu: {
-    width: 200,
-  },
-}));
+  const [item, setItem] = useState(null);
+  const [loading, setLoading] = useState(Boolean(id));
+  const [missing, setMissing] = useState(!id);
+  const [saving, setSaving] = useState(false);
 
-const EditItem = () => {
-  const classes = useStyles();
-  const [values, setValues] = React.useState({
-    category: 'room',
-  });
+  useEffect(() => {
+    if (!id) {
+      setMissing(true);
+      setLoading(false);
+      return undefined;
+    }
 
-  const handleChange = name => event => {
-    setValues({ ...values, [name]: event.target.value });
+    let active = true;
+    setLoading(true);
+
+    db.collection(INVENTORY_COLLECTION)
+      .doc(id)
+      .get()
+      .then(doc => {
+        if (!active) return;
+        if (!doc.exists) {
+          setItem(null);
+          setMissing(true);
+        } else {
+          setItem({ ...deserializeItem(doc.data()), id: doc.id });
+          setMissing(false);
+        }
+      })
+      .catch(error => {
+        if (!active) return;
+        console.error('Could not load inventory item:', error);
+        toast.error(`Could not load item: ${error.message}`);
+        setMissing(true);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [id]);
+
+  const handleSave = async form => {
+    setSaving(true);
+    const payload = serializeItem(form);
+
+    try {
+      const duplicates = await db
+        .collection(INVENTORY_COLLECTION)
+        .where('itemCode', '==', payload.itemCode)
+        .get();
+
+      if (duplicates.docs.some(doc => doc.id !== id)) {
+        toast.error(`Item ID "${payload.itemCode}" already exists`);
+        return;
+      }
+
+      await db.collection(INVENTORY_COLLECTION).doc(id).update({
+        ...payload,
+        updatedAt: serverTimestamp(),
+      });
+
+      toast.success(`Item "${payload.name}" updated`);
+      history.push('/view-inventory');
+    } catch (error) {
+      console.error('Could not update inventory item:', error);
+      toast.error(`Could not update item: ${error.message}`);
+    } finally {
+      setSaving(false);
+    }
   };
- const handleChanger = name => event => {
-    setState({ ...state, [name]: event.target.checked });
-  };
+
+  if (missing || !id) {
+    return (
+      <Card title="Edit Item">
+        <p className="inventoryFormEmpty">
+          No item selected. Open one from the{' '}
+          <Link to="/view-inventory">inventory list</Link> to edit it.
+        </p>
+      </Card>
+    );
+  }
+
+  if (loading || !item) {
+    return (
+      <Card title="Edit Item">
+        <p className="inventoryFormEmpty">Loading item…</p>
+      </Card>
+    );
+  }
+
   return (
     <Fragment>
       <Helmet>
         <title>Edit Item</title>
       </Helmet>
-      <Grid container spacing={3}>
-      <Grid item xl={4} md={4} sm={12} xs={12} style={{marginLeft: 750}}>
-        <TextField
-          label="Search"
-          type="search"
-          className='inputField'
-          fullWidth
-          variant="outlined"
-          
+      <Card title={`Edit item ${item.itemCode}`} subtitle={item.name}>
+        <InventoryForm
+          initialItem={item}
+          submitLabel="Save changes"
+          submitting={saving}
+          onSubmit={handleSave}
+          onCancel={() => history.push('/view-inventory')}
         />
-      </Grid  >
-      <Grid style={{marginBottom:20}} >
-
-      </Grid>
-      </Grid>
-      <Card>
-        <form noValidate>
-          <Grid container spacing={3}>
-            <Grid item xl={4} md={3} sm={12} xs={12}>
-              <TextField
-                required
-                label="ID"
-                name="id"
-                className="inputField"
-                fullWidth
-                variant="outlined"
-              />
-            </Grid>
-          </Grid>
-          <Grid container spacing={3}>
-            <Grid item xl={6} md={6} sm={12} xs={12}>
-              <TextField
-                required
-                label="Name"
-                name="name"
-                className="inputField"
-                fullWidth
-                variant="outlined"
-              />
-            </Grid>
-          
-
-          
-            <Grid item xl={6} md={6} sm={12} xs={12}>
-              <TextField
-                select
-                label="Category"
-                name="category"
-                className="inputField"
-                fullWidth
-                value={values.category}
-                onChange={handleChange('category')}
-                SelectProps={{
-                  MenuProps: {
-                    className: classes.menu,
-                  },
-                }}
-                helperText="Please select the category"
-                variant="outlined"
-              >
-                {categories.map(option => (
-                  <MenuItem key={option.value} value={option.value}>
-                    {option.label}
-                  </MenuItem>
-                ))}
-              </TextField>
-            </Grid>
-            
-           
-              <Grid item xl={6} md={6} sm={12} xs={12}>
-                <TextField
-                  required
-                  label="Location"
-                  name="location"
-                  className="inputField"
-                  fullWidth
-                  variant="outlined"
-                />
-              </Grid>
-            
-
-            
-              <Grid item xl={6} md={6} sm={12} xs={12}>
-                <TextField
-                  required
-                  label="Quantity"
-                  name="quantity"
-                  className="inputField"
-                  fullWidth
-                  variant="outlined"
-                />
-              </Grid>
-          
-
-            
-
-            <ul className="buttonList">
-              <li>
-                <input
-                  className="btn btn-submit bg-success btn-radius "
-                  type="submit"
-                />
-              </li>
-              <li>
-                <Button
-                  className="btn bg-default btn-radius"
-                  type="reset"
-                  value="Reset"
-                >
-                  Reset
-                </Button>
-              </li>
-            </ul>
-          </Grid>
-        </form>
       </Card>
     </Fragment>
   );
 };
+
 function mapDispatchToProps(dispatch) {
-  return {
-    dispatch,
-  };
+  return { dispatch };
 }
 
-const withConnect = connect(
-  null,
-  mapDispatchToProps,
-);
-export default compose(EditItem);
+const withConnect = connect(null, mapDispatchToProps);
+
+export default compose(withConnect)(EditItem);

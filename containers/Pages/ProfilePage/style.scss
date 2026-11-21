@@ -1,141 +1,134 @@
-@import '../../../../docs/css/mixin.scss';
+@import '../../../docs/css/mixin.scss';
 
-.profileInfoWrap {
-    background: #fff;
-    padding: 30px;
-    text-align: center;
-    margin-bottom: 32px;
-    border-radius: 4px;
+.profileCard {
+  &__identity {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 14px;
 
-    .profileInfoImg {
-        margin-bottom: 20px;
-
-        img {
-            width: 150px;
-            border-radius: 50%;
-            border: 5px solid #f1f1f1;
-        }
+    h3 {
+      margin: 0 0 4px;
+      font-size: 18px;
     }
 
-    .profileInfoContent {
-        h4 {
-            font-size: 18px;
-            line-height: 18px;
-            margin-bottom: 5px;
-        }
-
-        p {
-            margin-top: 0;
-            margin-bottom: 20px;
-        }
-
-        ul {
-            display: flex;
-            justify-content: center;
-
-            li {
-                margin-right: 10px;
-
-                &:last-child {
-                    margin-right: 0;
-
-                    button {
-                        background: $baseColor;
-                    }
-                }
-
-                button,
-                a {
-                    width: 100px;
-                    height: 35px;
-                    background: $baseColor;
-                    text-transform: capitalize;
-                    span {
-                        color: #fff;
-                    }
-                }
-            }
-        }
+    p {
+      margin: 0;
+      font-size: 12.5px;
+      color: $mutedColor;
+      line-height: 1.5;
     }
+  }
+
+  &__avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 56px;
+    height: 56px;
+    flex: none;
+    border-radius: 16px;
+    background: $navy;
+    color: #fff;
+    font-size: 18px;
+    font-weight: 700;
+    box-shadow: 0 8px 20px rgba(27, 42, 95, 0.24);
+  }
+
+  &__hint {
+    margin: 0 0 18px;
+    font-size: 11.5px;
+    color: $mutedColor;
+
+    code {
+      font-size: 11px;
+      background: $inputBg;
+      border-radius: 6px;
+      padding: 2px 6px;
+      color: $navy;
+    }
+  }
+
+  &__tabs {
+    .MuiTab-root {
+      align-items: flex-start;
+      text-align: left;
+      min-height: 44px;
+      border-radius: $radiusSm;
+      padding: 0 14px;
+      text-transform: none;
+
+      &.Mui-selected {
+        background: $navySoft;
+      }
+    }
+  }
 }
 
-.profileTabMenu {
-    background: #fff;
-    padding: 30px;
-    text-align: center;
-    overflow: visible;
-    border-radius: 4px;
+.profileDetails {
+  display: flex;
+  flex-direction: column;
 
-    .noScroll {
-        white-space: unset;
+  li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 13px 0;
+    border-bottom: 1px solid #f0f2f9;
 
-        .containerClass {
-            display: block;
-
-            button,
-            a {
-                min-width: 100%;
-                padding: 0px;
-                justify-content: flex-start;
-                min-height: 50px;
-                opacity: 1;
-                text-transform: capitalize;
-                font-size: 15px;
-                color: $textColor;
-
-                span {
-                    justify-content: flex-start;
-                    flex-direction: row;
-
-                    i {
-                        margin-bottom: 0;
-                        width: 30px;
-                        height: 30px;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        border-radius: 50%;
-                        border: 1px solid #e5e5e5;
-                        margin-right: 10px;
-                        font-size: 14px;
-                        color: $textColor;
-                    }
-                }
-
-                &[aria-selected="true"] {
-                    span {
-                        color: $baseColor;
-
-                        i {
-                            color: #fff;
-                            background: $baseColor;
-                        }
-                    }
-                }
-
-                &:hover {
-                    background: transparent;
-                }
-            }
-        }
+    &:last-child {
+      border-bottom: none;
     }
 
-    .noIndicator {
-        display: none;
+    strong {
+      margin-left: auto;
+      font-size: 13.5px;
+      font-weight: 600;
+      color: $headingColor;
+      text-align: right;
     }
+  }
+
+  &__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 9px;
+    background: $navySoft;
+    color: $navy;
+  }
+
+  &__label {
+    font-size: 13px;
+    color: $mutedColor;
+  }
+
+  &__property {
+    margin-top: 16px;
+  }
 }
 
-.userProfile {
-    span {
-        display: block;
-        margin-bottom: 3px;
-        text-transform: capitalize;
-        font-size: 14px;
-    }
+.profileForm {
+  &__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 8px;
+  }
 
-    h4 {
-        margin-bottom: 0;
-        padding: 15px;
-        background: #fafafa;
-    }
+  .MuiTextField-root {
+    margin-bottom: 4px;
+  }
+}
+
+.profileCard__tabs {
+  .MuiTabs-indicator {
+    display: none;
+  }
+
+  .MuiTab-wrapper {
+    align-items: flex-start;
+  }
 }

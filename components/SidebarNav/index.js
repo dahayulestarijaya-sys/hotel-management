@@ -1,267 +1,234 @@
-import React, { useState, Fragment } from 'react';
-import { connect } from 'react-redux';
-import { injectIntl } from 'react-intl';
-import { compose } from 'redux';
-import { Grid, ExpansionPanel, ExpansionPanelSummary } from '@material-ui/core';
-import { NavLink, Link } from 'react-router-dom';
-import PerfectScrollbar from 'react-perfect-scrollbar';
-import 'react-perfect-scrollbar/dist/css/styles.css';
+import React, { useEffect, useState } from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
+import {
+  BarChart3,
+  BedDouble,
+  Building2,
+  CalendarCheck2,
+  ChevronDown,
+  LayoutDashboard,
+  PackageSearch,
+  PanelLeft,
+  Settings,
+  User,
+} from 'lucide-react';
+import { db } from 'utils/firebase';
+import { PROPERTY_DOC, SETTINGS_COLLECTION } from 'utils/settings';
 import './style.scss';
 
-// images
- import ana from 'images/icons/sidebar/dashboard/ana.svg';
- import anaH from 'images/icons/sidebar/dashboard/ana-h.svg';
- import ui from 'images/icons/sidebar/ui.svg';
- import uiH from 'images/icons/sidebar/ui-h.svg';
- import form from 'images/icons/sidebar/form.svg';
- import formH from 'images/icons/sidebar/form-h.svg';
- import pricing from 'images/icons/sidebar/new/pricing.svg';
- import pricingH from 'images/icons/sidebar/new/pricing-h.svg';
- import fontawesome from 'images/icons/sidebar/new/fontawesome.svg';
- import fontawesomeH from 'images/icons/sidebar/new/fontawesome-h.svg';
+/**
+ * Application sidebar.
+ *
+ * Groups expand/collapse; the group containing the current route opens
+ * automatically. Icons come from lucide-react so the whole app shares one icon
+ * set. The property block is read from Firestore (`Settings/property`).
+ */
+const NAVIGATION = [
+  { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, to: '/dashboard' },
+  {
+    key: 'bookings',
+    label: 'Bookings',
+    icon: CalendarCheck2,
+    items: [
+      { label: 'Add Booking', to: '/add-booking' },
+      { label: 'View Booking', to: '/view-booking' },
+      { label: 'Edit Booking', to: '/edit-booking' },
+    ],
+  },
+  {
+    key: 'rooms',
+    label: 'Rooms',
+    icon: BedDouble,
+    items: [
+      { label: 'Add Room', to: '/add-rooms' },
+      { label: 'View Rooms', to: '/view-rooms' },
+      { label: 'Edit Room', to: '/edit-rooms' },
+    ],
+  },
+  { key: 'reports', label: 'Reports', icon: BarChart3, to: '/reports' },
+  {
+    key: 'inventory',
+    label: 'Inventory',
+    icon: PackageSearch,
+    items: [
+      { label: 'Add Item', to: '/add-item' },
+      { label: 'View Inventory', to: '/view-inventory' },
+      { label: 'Edit Item', to: '/edit-item' },
+    ],
+  },
+  { key: 'profile', label: 'Profile', icon: User, to: '/profile' },
+];
 
-// images
-import logo from 'images/logo.png';
-import smallLogo from 'images/small-logo.png';
-import messages from './messages';
+const groupMatchesPath = (group, pathname) =>
+  Boolean(group.items && group.items.some(item => pathname.startsWith(item.to)));
 
-const SidebarNav = props => {
-  const navigations = [
-    {
-      name: 'Dashboard',
-      icon: ana,
-      iconHover: anaH,
-      id: 11031,
-      menus: [
-        {
-          name: 'Frontdesk',
-          link: '/dashboard',
-          id: 59681,
-        },
-      ],
-    },
-    {
-      name: 'Booking',
-      id: 41728,
-      icon: ui,
-      iconHover: uiH,
-      menus: [
-        {
-          name: 'Add Booking',
-          link: '/add-booking',
-          id: 1234,
-        },
-        {
-          name: 'View Booking',
-          link: '/view-booking',
-          id: 1235,
-        },
-        {
-          name: 'Edit Booking',
-          link: '/edit-booking',
-          id: 1236,
-        },
-      ],
-    },
-    {
-      name: 'Rooms',
-      icon: pricing,
-      iconHover: pricingH,
-      id: 5464145555522,
-      menus: [
-        {
-          name: 'Add Rooms',
-          link: '/add-rooms',
-          id: 1231,
-        },
-        {
-          name: 'View Rooms',
-          link: '/view-rooms',
-          id: 1232,
-        },
-        {
-          name: 'Edit Rooms',
-          link: '/edit-rooms',
-          id: 1233,
-        },
-      ],
-    },
-    {
-      name: 'Booking Chart',
-      id: 70153,
-      icon: form,
-      iconHover: formH,
-      menus: [],
-    },
-    {
-      name: 'Inventory',
-      id: 92394,
-      icon: fontawesome,
-      iconHover: fontawesomeH,
-      menus: [
-        {
-          name: 'Add Item',
-          link: '/add-item',
-          id: 6661,
-        },
-        {
-          name: 'View Inventory',
-          link: '/view-inventory',
-          id: 6662,
-        },
-        {
-          name: 'Edit Item',
-          link: '/edit-item',
-          id: 6663,
-        },
-      ],
-    },
-  ];
+export const SidebarNav = ({ colupsMenuHandler, open, colupsMenu }) => {
+  const location = useLocation();
+  const [expanded, setExpanded] = useState({ bookings: true, rooms: false, inventory: false });
+  const [property, setProperty] = useState({ name: '', code: '' });
+  const isOpen = typeof open === 'boolean' ? open : Boolean(colupsMenu);
 
-  const [parent_expanded, setParentExpanded] = useState('1');
-  const parent_handleChange = panel => (event, new_parent_expanded) => {
-    setParentExpanded(new_parent_expanded ? panel : false);
-    setExpanded(false);
+  useEffect(() => {
+    const unsubscribe = db
+      .collection(SETTINGS_COLLECTION)
+      .doc(PROPERTY_DOC)
+      .onSnapshot(
+        doc => setProperty(doc.exists ? { name: doc.data().name || '', code: doc.data().code || '' } : { name: '', code: '' }),
+        error => console.error('Could not load the property settings:', error),
+      );
+
+    return unsubscribe;
+  }, []);
+
+  useEffect(() => {
+    const activeGroup = NAVIGATION.find(group => groupMatchesPath(group, location.pathname));
+    if (activeGroup) {
+      setExpanded(previous => ({ ...previous, [activeGroup.key]: true }));
+    }
+  }, [location.pathname]);
+
+  // Mobile drawer: lock the page behind it and allow Escape to close it.
+  useEffect(() => {
+    if (!isOpen || typeof colupsMenuHandler !== 'function') return undefined;
+
+    const handleKeyDown = event => {
+      if (event.key === 'Escape') colupsMenuHandler();
+    };
+    const previousOverflow = document.body.style.overflow;
+
+    document.addEventListener('keydown', handleKeyDown);
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isOpen, colupsMenuHandler]);
+
+  const toggleGroup = key =>
+    setExpanded(previous => ({ ...previous, [key]: !previous[key] }));
+
+  const handleNavigate = () => {
+    window.scrollTo(0, 0);
+    // On mobile the menu is an off-canvas drawer: close it after navigating.
+    if (isOpen) colupsMenuHandler();
   };
 
-  const [expanded, setExpanded] = useState('1');
-  const handleChange = panel => (event, newExpanded) => {
-    setExpanded(newExpanded ? panel : false);
-  };
   return (
-    <Grid className="sidebarMainWrapper">
-      <div onClick={props.colupsMenuHandler} className="colupsMenuSidebar">
-        <svg
-          aria-hidden="true"
-          focusable="false"
-          data-prefix="fal"
-          data-icon="bars"
-          role="img"
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 448 512"
-          className="svg-inline--fa fa-bars fa-w-14 fa-fw"
+    <>
+      {isOpen && (
+        <button
+          type="button"
+          className="sidebarScrim"
+          onClick={colupsMenuHandler}
+          aria-label="Close navigation"
+        />
+      )}
+
+      <div className={`sidebarMainWrapper${isOpen ? ' is-open' : ''}`}>
+        <button
+          type="button"
+          className="sidebarToggle"
+          onClick={colupsMenuHandler}
+          aria-label="Toggle navigation"
         >
-          <path
-            fill="currentColor"
-            d="M442 114H6a6 6 0 0 1-6-6V84a6 6 0 0 1 6-6h436a6 6 0 0 1 6 6v24a6 6 0 0 1-6 6zm0 160H6a6 6 0 0 1-6-6v-24a6 6 0 0 1 6-6h436a6 6 0 0 1 6 6v24a6 6 0 0 1-6 6zm0 160H6a6 6 0 0 1-6-6v-24a6 6 0 0 1 6-6h436a6 6 0 0 1 6 6v24a6 6 0 0 1-6 6z"
-          />
-        </svg>
-      </div>
-      <div className="sidebarWrap">
-        <div className="logo">
-          <NavLink to="/dashboard">
-            <img className="normal" src={logo} alt="" />
-            <img className="colupsLogo" src={smallLogo} alt="" />
+          <PanelLeft size={18} />
+        </button>
+
+        <div className="sidebar">
+          <NavLink to="/dashboard" className="sidebar__brand" onClick={handleNavigate}>
+            <span className="sidebar__logo">
+              <Building2 size={20} />
+            </span>
+            <span className="sidebar__brandText">
+              <strong>HotelsQuad</strong>
+              <small>PMS CLOUD</small>
+            </span>
           </NavLink>
-        </div>
-        <Grid className="sidebarMenu">
-          <PerfectScrollbar>
-            {navigations.map(nav => (
-              <Fragment key={nav.id}>
-                <ExpansionPanel
-                  classes={{
-                    root: 'navItems',
-                    expanded: 'navItemsExpanded',
-                  }}
-                  square
-                  expanded={parent_expanded === nav.id}
-                  onChange={parent_handleChange(nav.id)}
-                >
-                  <ExpansionPanelSummary
-                    classes={{
-                      root: 'navItemsText',
-                      expanded: 'navItemsTextExpanded',
-                      expandIcon: 'navItemsTextIcon',
-                      content: 'navItemsTextContent',
-                    }}
-                    expandIcon={<i className="fa fa-angle-down" />}
+
+          <nav className="sidebar__nav">
+            <span className="sidebar__sectionLabel">Workspace</span>
+            {NAVIGATION.map(group => {
+              if (!group.items) {
+                const Icon = group.icon;
+
+                return (
+                  <NavLink
+                    key={group.key}
+                    to={group.to}
+                    className="navItem navItem--single"
+                    activeClassName="is-active"
+                    onClick={handleNavigate}
                   >
-                    <span className="icon">
-                      <img className="normal" src={nav.icon} alt="" />
-                      <img className="hover" src={nav.iconHover} alt="" />
-                    </span>
-                    <span className="name">{nav.name}</span>
-                  </ExpansionPanelSummary>
-                  <ul className="submenu">
-                    {nav.menus.map((menu, i) => (
-                      <li key={menu.id}>
-                        {menu.link ? (
-                          <NavLink
-                            className="navItem"
-                            activeClassName="active"
-                            exact
-                            onClick={window.scrollTo(0, 0)}
-                            to={menu.link}
-                          >
-                            <span className="name">{menu.name}</span>
-                            {menu.value && (
-                              <span
-                                style={{ background: menu.color }}
-                                className="value"
-                              >
-                                {menu.value}
-                              </span>
-                            )}
-                          </NavLink>
-                        ) : (
-                          <ExpansionPanel
-                            classes={{
-                              root: 'navItems',
-                              expanded: 'navItemsExpanded',
-                            }}
-                            square
-                            expanded={expanded === menu.id}
-                            onChange={handleChange(menu.id)}
-                          >
-                            <ExpansionPanelSummary
-                              classes={{
-                                root: 'navItemsText',
-                                expanded: 'navItemsTextExpanded',
-                                expandIcon: 'navItemsTextIcon',
-                                content: 'navItemsTextContent',
-                              }}
-                              expandIcon={<i className="fa fa-angle-down" />}
-                            >
-                              <span className="name">{menu.name}</span>
-                            </ExpansionPanelSummary>
-                            <ul className="thirdmenuItems">
-                              {menu.submenus.map((submenu, i) => (
-                                <li key={i}>
-                                  <NavLink
-                                    onClick={window.scrollTo(0, 0)}
-                                    activeClassName="active"
-                                    exact
-                                    to={submenu.link}
-                                  >
-                                    {submenu.name}
-                                  </NavLink>
-                                </li>
-                              ))}
-                            </ul>
-                          </ExpansionPanel>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                </ExpansionPanel>
-              </Fragment>
-            ))}
-          </PerfectScrollbar>
-        </Grid>
+                    <span className="navItem__icon"><Icon size={18} /></span>
+                    <span className="navItem__label">{group.label}</span>
+                  </NavLink>
+                );
+              }
+
+              const Icon = group.icon;
+              const isExpanded = Boolean(expanded[group.key]);
+              const isActive = groupMatchesPath(group, location.pathname);
+
+              return (
+                <div
+                  key={group.key}
+                  className={`navGroup${isExpanded ? ' is-expanded' : ''}${isActive ? ' is-active' : ''}`}
+                >
+                  <button
+                    type="button"
+                    className="navGroup__header"
+                    onClick={() => toggleGroup(group.key)}
+                    aria-expanded={isExpanded}
+                  >
+                    <span className="navItem__icon"><Icon size={18} /></span>
+                    <span className="navItem__label">{group.label}</span>
+                    <ChevronDown size={16} className="navGroup__chevron" />
+                  </button>
+
+                  {isExpanded && (
+                    <div className="navGroup__items">
+                      {group.items.map(item => (
+                        <NavLink
+                          key={item.to}
+                          to={item.to}
+                          className="navSubItem"
+                          activeClassName="is-active"
+                          onClick={handleNavigate}
+                        >
+                          {item.label}
+                        </NavLink>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </nav>
+
+          <div className="sidebar__footer">
+            <span className="sidebar__propertyIcon">
+              <Building2 size={15} />
+            </span>
+            <div className="sidebar__propertyText">
+              <span className="sidebar__footerLabel">
+                {property.name || 'Property'}
+              </span>
+              <strong>{property.code || 'Not configured'}</strong>
+            </div>
+            <NavLink
+              to="/profile"
+              className="sidebar__settings"
+              aria-label="Property settings"
+              onClick={handleNavigate}
+            >
+              <Settings size={16} />
+            </NavLink>
+          </div>
+        </div>
       </div>
-    </Grid>
+    </>
   );
 };
 
-function mapDispatchToProps(dispatch) {
-  return {
-    dispatch,
-  };
-}
-
-const withConnect = connect(
-  null,
-  mapDispatchToProps,
-);
-
-export default compose(withConnect)(injectIntl(SidebarNav));
+export default SidebarNav;

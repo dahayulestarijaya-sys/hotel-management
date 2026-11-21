@@ -1,38 +1,109 @@
+@import '../../docs/css/mixin.scss';
+
 .notfoundArea {
-    min-height: 100vh;
-    display: flex;
-    justify-content: center;
-    flex-direction: column;
-    text-align: center;
-    padding: 0px 16px;
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  text-align: center;
+  padding: 32px 16px;
+  overflow: hidden;
+  background-color: $bodyBg;
+  background-image: radial-gradient(720px 420px at 12% 0%, rgba(47, 91, 234, 0.12), transparent 62%),
+    radial-gradient(680px 400px at 90% 100%, rgba(109, 92, 231, 0.12), transparent 62%);
 
-    h2 {
-        font-size: 250px;
-        font-weight: 700;
-        line-height: 200px;
-        margin-bottom: 20px;
+  &__card {
+    position: relative;
+    z-index: 2;
+    max-width: 480px;
+    padding: 40px 36px;
+    border: 1px solid $borderColor;
+    border-radius: 26px;
+    background: rgba(255, 255, 255, 0.86);
+    box-shadow: $shadowPop;
+    backdrop-filter: blur(14px);
+    animation: hqFadeUp 0.45s ease both;
+  }
 
-        @media (max-width:767px) {
-            font-size: 150px;
-            line-height: 140px;
-        }
+  &__orb {
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+
+    &--one {
+      top: -140px;
+      left: -100px;
+      width: 420px;
+      height: 420px;
+      background: radial-gradient(circle, rgba(47, 91, 234, 0.18), transparent 68%);
     }
 
-    p {
-        font-size: 18px;
-        margin-bottom: 30px;
-
-        @media (max-width:767px) {
-            font-size: 16px;
-        }
-
-        span {
-            display: block;
-
-            @media (max-width:450px) {
-                display: inline-block;
-            }
-
-        }
+    &--two {
+      right: -160px;
+      bottom: -180px;
+      width: 480px;
+      height: 480px;
+      background: radial-gradient(circle, rgba(109, 92, 231, 0.16), transparent 68%);
     }
+  }
+
+  h2 {
+    margin: 6px 0 4px;
+    font-size: 96px;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.06em;
+    background: $gradientAccent;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+
+    @media (max-width: 767px) {
+      font-size: 72px;
+    }
+  }
+
+  h3 {
+    margin: 0 0 10px;
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: $headingColor;
+  }
+
+  p {
+    margin: 0 auto 26px;
+    max-width: 360px;
+    font-size: 14px;
+    line-height: 1.6;
+    color: $mutedColor;
+  }
+
+  .uiButton {
+    text-decoration: none;
+  }
+}
+
+.notfoundArea__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 58px;
+  height: 58px;
+  margin-bottom: 8px;
+  border-radius: 18px;
+  background: $gradientNavy;
+  color: #fff;
+  box-shadow: 0 14px 28px rgba(27, 42, 95, 0.28);
+}
+
+@media (max-width: 575px) {
+  .notfoundArea {
+    &__card {
+      padding: 30px 20px;
+      border-radius: 20px;
+    }
+  }
 }

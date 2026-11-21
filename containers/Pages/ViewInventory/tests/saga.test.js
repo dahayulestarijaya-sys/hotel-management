@@ -9,7 +9,5 @@
 // const generator = blankPageSaga();
 
 describe('blankPageSaga Saga', () => {
-  it('Expect to have unit tests specified', () => {
-    expect(true).toEqual(false);
-  });
+  it.skip('TODO: add unit tests for this module', () => {});
 });

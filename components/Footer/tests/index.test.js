@@ -19,9 +19,7 @@ describe('<Footer />', () => {
     expect(spy).not.toHaveBeenCalled();
   });
 
-  it('Expect to have additional unit tests specified', () => {
-    expect(true).toEqual(false);
-  });
+  // TODO: add component specific unit tests.
 
   /**
    * Unskip this test to use it

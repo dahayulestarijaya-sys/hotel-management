@@ -1,444 +1,136 @@
-import React, { Fragment } from 'react';
-import { connect } from 'react-redux';
+import React, { Fragment, useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet';
-import Card from 'components/Card/Loadable';
+import { toast } from 'react-toastify';
+import { connect } from 'react-redux';
 import { compose } from 'redux';
-import Dropzone from 'react-dropzone-uploader';
-import 'react-dropzone-uploader/dist/styles.css';
-import '../../../components/Forms/FormUpload/style.scss';
+import { Link, useHistory, useParams } from 'react-router-dom';
+import Card from 'components/Card/Loadable';
+import RoomForm from 'components/RoomForm';
+import { db, serverTimestamp } from 'utils/firebase';
 import {
-  makeStyles,
-  Grid,
-  Checkbox,
-  FormGroup,
-  FormControlLabel,
-  MenuItem,
-  TextField,
-  Button,
-} from '@material-ui/core';
-import 'sass/elements/buttons.scss';
+  ROOMS_COLLECTION,
+  deserializeRoom,
+  serializeRoom,
+} from 'utils/rooms';
 
-const rooms = [
-  {
-    value: 'single',
-    label: 'Single',
-  },
-  {
-    value: 'double',
-    label: 'Double',
-  },
-  {
-    value: 'quad',
-    label: 'Quad',
-  },
-  {
-    value: 'king',
-    label: 'King',
-  },
-  {
-    value: 'queen',
-    label: 'Queen',
-  },
-];
-const ac = [
-  {
-    value: 'ac',
-    label: 'AC',
-  },
-  {
-    value: 'nonAc',
-    label: 'Non AC',
-  },
-];
-const cancellations = [
-  {
-    value: 'free',
-    label: 'Free Cancellation',
-  },
-  {
-    value: 'small',
-    label: '5% before 24 hours',
-  },
-  {
-    value: 'nil',
-    label: 'No Cancellation Allowed',
-  },
-];
+export const EditRooms = () => {
+  const { id } = useParams();
+  const history = useHistory();
 
-const useStyles = makeStyles(theme => ({
-  menu: {
-    width: 200,
-  },
-}));
+  const [room, setRoom] = useState(null);
+  const [loading, setLoading] = useState(Boolean(id));
+  const [missing, setMissing] = useState(!id);
+  const [saving, setSaving] = useState(false);
 
-const EditRooms = () => {
-  const classes = useStyles();
-  const [values, setValues] = React.useState({
-    // name: 'Cat in the Hat',
-    bed: '',
-    // multiline: 'Controlled',
-    room: 'double',
-    Ac: 'ac',
-    cancellation: 'small',
-  });
+  useEffect(() => {
+    if (!id) {
+      setMissing(true);
+      setLoading(false);
+      return undefined;
+    }
 
-  const handleChange = name => event => {
-    setValues({ ...values, [name]: event.target.value });
+    let active = true;
+    setLoading(true);
+
+    db.collection(ROOMS_COLLECTION)
+      .doc(id)
+      .get()
+      .then(doc => {
+        if (!active) return;
+        if (!doc.exists) {
+          setRoom(null);
+          setMissing(true);
+        } else {
+          setRoom({ ...deserializeRoom(doc.data()), id: doc.id });
+          setMissing(false);
+        }
+      })
+      .catch(error => {
+        if (!active) return;
+        console.error('Could not load room:', error);
+        toast.error(`Could not load room: ${error.message}`);
+        setMissing(true);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [id]);
+
+  const handleSave = async form => {
+    setSaving(true);
+    const payload = serializeRoom(form);
+
+    try {
+      const duplicates = await db
+        .collection(ROOMS_COLLECTION)
+        .where('roomNumber', '==', payload.roomNumber)
+        .get();
+
+      if (duplicates.docs.some(doc => doc.id !== id)) {
+        toast.error(`Room number "${payload.roomNumber}" already exists`);
+        return;
+      }
+
+      await db.collection(ROOMS_COLLECTION).doc(id).update({
+        ...payload,
+        updatedAt: serverTimestamp(),
+      });
+
+      toast.success(`Room "${payload.roomNumber}" updated`);
+      history.push('/view-rooms');
+    } catch (error) {
+      console.error('Could not update room:', error);
+      toast.error(`Could not update room: ${error.message}`);
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const getUploadParams = ({ meta }) => {
-    return { url: 'https://httpbin.org/post' };
-  };
+  if (missing || !id) {
+    return (
+      <Card title="Edit Room">
+        <p className="roomFormEmpty">
+          No room selected. Open one from the{' '}
+          <Link to="/view-rooms">rooms list</Link> to edit it.
+        </p>
+      </Card>
+    );
+  }
 
-  //   // called every time a file's `status` changes
-  const handleChangeStatus = ({ meta, file }, status) => {
-    console.log(status, meta, file);
-  };
+  if (loading || !room) {
+    return (
+      <Card title="Edit Room">
+        <p className="roomFormEmpty">Loading room…</p>
+      </Card>
+    );
+  }
 
-  //   // receives array of files that are done uploading when submit button is clicked
-  const handleSubmit = (files, allFiles) => {
-    console.log(files.map(f => f.meta));
-    allFiles.forEach(f => f.remove());
-  };
-  const [state, setState] = React.useState({
-    checkedA: true,
-    checkedB: true,
-    checkedF: true,
-  });
-
-  const [selectedValue, setSelectedValue] = React.useState('a');
-
-  const handleChanger = name => event => {
-    setState({ ...state, [name]: event.target.checked });
-  };
   return (
     <Fragment>
       <Helmet>
         <title>Edit Rooms</title>
       </Helmet>
-      <Grid container spacing={3}>
-      <Grid item xl={4} md={4} sm={12} xs={12} style={{marginLeft: 750}}>
-        <TextField
-          label="Search"
-          type="search"
-          className='inputField'
-          fullWidth
-          variant="outlined"
-          
+      <Card title={`Edit room ${room.roomNumber}`} subtitle="Update the room details">
+        <RoomForm
+          initialRoom={room}
+          submitLabel="Save changes"
+          submitting={saving}
+          onSubmit={handleSave}
+          onCancel={() => history.push('/view-rooms')}
         />
-      </Grid  >
-      <Grid style={{marginBottom:20}} >
-
-      </Grid>
-      </Grid>
-      <Card>
-        <form noValidate>
-          <Grid container spacing={3}>
-            <Grid item xl={4} md={3} sm={12} xs={12}>
-              <TextField
-                required
-                label="Room Number"
-                name="roomNo"
-                className="inputField"
-                fullWidth
-                variant="outlined"
-              />
-            </Grid>
-          </Grid>
-
-          <Grid container spacing={3}>
-            <Grid item xl={6} md={6} sm={12} xs={12}>
-              <TextField
-                select
-                label="Room Type"
-                name="roomType"
-                className="inputField"
-                fullWidth
-                value={values.room}
-                onChange={handleChange('room')}
-                SelectProps={{
-                  MenuProps: {
-                    className: classes.menu,
-                  },
-                }}
-                helperText="Please select the room type"
-                variant="outlined"
-              >
-                {rooms.map(option => (
-                  <MenuItem key={option.value} value={option.value}>
-                    {option.label}
-                  </MenuItem>
-                ))}
-              </TextField>
-            </Grid>
-
-            <Grid item xl={6} md={6} sm={12} xs={12}>
-              <TextField
-                select
-                label="AC/NON-AC"
-                name="acNonac"
-                className="inputField"
-                fullWidth
-                value={values.Ac}
-                onChange={handleChange('Ac')}
-                SelectProps={{
-                  MenuProps: {
-                    className: classes.menu,
-                  },
-                }}
-                variant="outlined"
-              >
-                {ac.map(option => (
-                  <MenuItem key={option.value} value={option.value}>
-                    {option.label}
-                  </MenuItem>
-                ))}
-              </TextField>
-            </Grid>
-
-            <Grid item xl={6} md={6} sm={12} xs={12}>
-              <TextField
-                required
-                label="Bed Capacity"
-                name="bedCapacity"
-                value={values.bed}
-                onChange={handleChange('bed')}
-                type="number"
-                fullWidth
-                className="inputField"
-                InputLabelProps={{
-                  shrink: true,
-                }}
-                variant="outlined"
-              />
-            </Grid>
-
-            <Grid item xl={6} md={6} sm={12} xs={12}>
-              <TextField
-                select
-                label="Cancellation Charges"
-                name="cancellationCharges"
-                className="inputField"
-                fullWidth
-                value={values.cancellation}
-                onChange={handleChange('cancellation')}
-                SelectProps={{
-                  MenuProps: {
-                    className: classes.menu,
-                  },
-                }}
-                variant="outlined"
-              >
-                {cancellations.map(option => (
-                  <MenuItem key={option.value} value={option.value}>
-                    {option.label}
-                  </MenuItem>
-                ))}
-              </TextField>
-            </Grid>
-
-            <Grid item xl={6} md={6} sm={12} xs={12}>
-              <TextField
-                required
-                fullWidth
-                label="Rent Per Night"
-                name="rentPerNight"
-                className="inputField"
-                variant="outlined"
-                helperText="In Indian Currency"
-              />
-            </Grid>
-
-            <Grid item xl={6} md={6} sm={12} xs={12}>
-              <TextField
-                required
-                label="Phone Number"
-                name="phoneNo"
-                className="inputField"
-                fullWidth
-                variant="outlined"
-              />
-            </Grid>
-
-            <Grid item xl={6} md={6} sm={12} xs={12}>
-              <TextField
-                label="Room Details"
-                name="roomDetails"
-                multiline
-                fullWidth
-                rows="4"
-                className="inputField"
-                variant="outlined"
-              />
-            </Grid>
-            <Grid container spacing={3}>
-              <Grid item lg={12} xs={12}>
-                Upload Room Photos
-                <Dropzone
-                  getUploadParams={getUploadParams}
-                  onChangeStatus={handleChangeStatus}
-                  onSubmit={handleSubmit}
-                  accept="image/*,audio/*,video/*"
-                  className="dropzonWrap"
-                />
-              </Grid>
-            </Grid>
-
-            <Grid container spacing={3}>
-              <Grid item lg={12} xs={12}>
-                Amenities Included:
-                <FormGroup row>
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        classes={{
-                          root: 'checkboxWrap checkDefault',
-                          checked: 'checked',
-                        }}
-                        value="bed"
-                      />
-                    }
-                    label="Bed"
-                  />
-
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        classes={{
-                          root: 'checkboxWrap checkDefault',
-                          checked: 'checked',
-                        }}
-                        value="pillow"
-                      />
-                    }
-                    label="Pillow"
-                  />
-
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        classes={{
-                          root: 'checkboxWrap checkDefault',
-                          checked: 'checked',
-                        }}
-                        value="chair"
-                      />
-                    }
-                    label="Chair"
-                  />
-
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        classes={{
-                          root: 'checkboxWrap checkDefault',
-                          checked: 'checked',
-                        }}
-                        value="table"
-                      />
-                    }
-                    label="Table"
-                  />
-
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        classes={{
-                          root: 'checkboxWrap checkDefault',
-                          checked: 'checked',
-                        }}
-                        value="ac"
-                      />
-                    }
-                    label="AC"
-                  />
-
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        classes={{
-                          root: 'checkboxWrap checkDefault',
-                          checked: 'checked',
-                        }}
-                        value="wifi"
-                      />
-                    }
-                    label="Wi-fi"
-                  />
-
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        classes={{
-                          root: 'checkboxWrap checkDefault',
-                          checked: 'checked',
-                        }}
-                        value="swimmingPool"
-                      />
-                    }
-                    label="Swimming Pool"
-                  />
-
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        classes={{
-                          root: 'checkboxWrap checkDefault',
-                          checked: 'checked',
-                        }}
-                        value="locker"
-                      />
-                    }
-                    label="Locker"
-                  />
-
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        classes={{
-                          root: 'checkboxWrap checkDefault',
-                          checked: 'checked',
-                        }}
-                        value="tv"
-                      />
-                    }
-                    label="TV"
-                  />
-                </FormGroup>
-              </Grid>
-            </Grid>
-
-            <ul className="buttonList">
-              <li>
-                <input
-                  className="btn btn-submit bg-success btn-radius "
-                  type="submit"
-                />
-              </li>
-              <li>
-                <Button
-                  className="btn bg-default btn-radius"
-                  type="reset"
-                  value="Reset"
-                >
-                  Reset
-                </Button>
-              </li>
-            </ul>
-          </Grid>
-        </form>
       </Card>
     </Fragment>
   );
 };
+
 function mapDispatchToProps(dispatch) {
-  return {
-    dispatch,
-  };
+  return { dispatch };
 }
 
-const withConnect = connect(
-  null,
-  mapDispatchToProps,
-);
-export default compose(EditRooms);
+const withConnect = connect(null, mapDispatchToProps);
+
+export default compose(withConnect)(EditRooms);

@@ -22,10 +22,8 @@ import App from 'containers/App';
 // Import Language Provider
 import LanguageProvider from 'containers/LanguageProvider';
 
-// Load the favicon and the .htaccess file
-/* eslint-disable import/no-unresolved, import/extensions */
-import 'file-loader?name=.htaccess!./.htaccess';
-/* eslint-enable import/no-unresolved, import/extensions */
+// Copy the .htaccess file into the build output
+import './.htaccess';
 
 import configureStore from './configureStore';
 
@@ -72,11 +70,4 @@ if (!window.Intl) {
         });
 } else {
     render(translationMessages);
-}
-
-// Install ServiceWorker and AppCache in the end since
-// it's not most important operation and if main code fails,
-// we do not want it installed
-if (process.env.NODE_ENV === 'production') {
-    require('offline-plugin/runtime').install(); // eslint-disable-line global-require
 }

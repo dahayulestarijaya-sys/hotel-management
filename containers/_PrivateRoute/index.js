@@ -1,178 +1,105 @@
-import React, { useState, useEffect, Fragment } from 'react';
+import React, { useState } from 'react';
 import { Route } from 'react-router-dom';
-
-import { connect } from 'react-redux';
-import { createStructuredSelector } from 'reselect';
-import { compose } from 'redux';
-import Fullscreen from 'react-full-screen';
-import { Grid, Button } from '@material-ui/core';
+import { FullScreen, useFullScreenHandle } from 'react-full-screen';
+import { CalendarDays, ChevronRight } from 'lucide-react';
+import moment from 'moment';
 import Header from 'components/Header/Loadable';
 import SidebarNav from 'components/SidebarNav/Loadable';
-import SidebarSetting from 'components/SidebarSetting/Loadable';
-import TopHeader from 'components/TopHeader/Loadable';
 import Footer from 'components/Footer/Loadable';
-import PopupChat from 'components/PopupChat/Loadable';
 
 import './style.scss';
 
-const PrivateRoute = props => {
-    const [colupsMenu, setColupsMenu] = useState(false);
-    const [sidebarSetting, setSidebarSetting] = useState(false);
-    const [screen, setScreen] = useState(false);
-    const [state, setState] = useState({
-        collapsable_menu: false,
-        top_menu: false,
-        squared_card: false,
-        block_shadow: false,
-    });
-
-    const [showLoading, setShowLoading] = useState(true);
-    const timer1 = setTimeout(() => setShowLoading(false), 3000);
-    useEffect(
-        () => () => {
-            clearTimeout(timer1)
-        },
-        [showLoading],
-    );
-
-    const handleChange = name => event => {
-        setState({ ...state, [name]: event.target.checked });
-    };
-    const colupsMenuHandler = () => {
-        setColupsMenu(!colupsMenu);
-    };
-    const fullScreenHandler = () => {
-        setScreen(!screen);
-    };
-    return (
-        <Fragment>
-            {showLoading ? (
-                <Grid className="preloaderWrap">
-                    <Grid className="spinner">
-                        <Grid className="double-bounce1" />
-                        <Grid className="double-bounce2" />
-                    </Grid>
-                </Grid>
-            ) : (
-                    ''
-                )}
-
-            <Fullscreen enabled={screen}>
-                {state.top_menu ? (
-                    <Fragment>
-                        <TopHeader fullScreenHandler={fullScreenHandler} />
-                        <Grid
-                            className={state.squared_card ? 'squareBoxCard p-50' : 'p-50'}
-                        >
-                            <Grid className={state.block_shadow ? 'withoutShadowCard' : ''}>
-                                <h2 className="breadcumbTitle">{props.title}</h2>
-                                <Route
-                                    {...props}
-                                    exact
-                                    render={props => <Component {...props} />}
-                                />
-                            </Grid>
-                        </Grid>
-                        <ul className="settingBtns">
-                            <li>
-                                <Button
-                                    onClick={() => setSidebarSetting(true)}
-                                    className="settingsWrap"
-                                >
-                                    <i className="icofont-ui-settings" />
-                                </Button>
-                            </li>
-                        </ul>
-                        {sidebarSetting && (
-                            <Grid
-                                onClick={() => setSidebarSetting(false)}
-                                className="backDrop"
-                            />
-                        )}
-                        )}
-          <SidebarSetting
-                            open={sidebarSetting}
-                            setSidebarSetting={setSidebarSetting}
-                            top_menu={state.top_menu}
-                            squared_card={state.squared_card}
-                            block_shadow={state.block_shadow}
-                            collapsable_menu={state.collapsable_menu}
-                            handleChange={handleChange}
-                        />
-                    </Fragment>
-                ) : (
-                        <Fragment>
-                            <Grid className={colupsMenu ? 'mainContainer mainContainerColups' : 'mainContainer' && state.collapsable_menu ? 'mainContainer mainContainerColups' : 'mainContainer'}>
-                                <SidebarNav
-                                    colupsMenuHandler={colupsMenuHandler}
-                                    colupsMenu={colupsMenu}
-                                    setSidebarSetting={setSidebarSetting}
-                                />
-                                <Grid
-                                    className={`mainContentRouter ${
-                                        state.squared_card ? 'squareBoxCard' : ''
-                                        }`}>
-                                    <Grid className={state.block_shadow ? 'withoutShadowCard' : ''}>
-                                        <Header
-                                            colupsMenuHandler={colupsMenuHandler}
-                                            fullScreenHandler={fullScreenHandler}
-                                        />
-                                        <Grid className="mainCotentInner">
-                                            <h2 className="breadcumbTitle">{props.title}</h2>
-                                            <Route
-                                                {...props}
-                                                exact
-                                                render={props => <Component {...props} />}
-                                            />
-                                        </Grid>
-                                    </Grid>
-                                </Grid>
-                                <ul className="settingBtns">
-                                    <li>
-                                        <Button
-                                            onClick={() => setSidebarSetting(true)}
-                                            className="settingsWrap"
-                                        >
-                                            <i className="icofont-ui-settings" />
-                                        </Button>
-                                    </li>
-                                </ul>
-
-                                {sidebarSetting && (
-                                    <Grid
-                                        onClick={() => setSidebarSetting(false)}
-                                        className="backDrop"
-                                    />
-                                )}
-
-                                <SidebarSetting
-                                    open={sidebarSetting}
-                                    setSidebarSetting={setSidebarSetting}
-                                    top_menu={state.top_menu}
-                                    squared_card={state.squared_card}
-                                    block_shadow={state.block_shadow}
-                                    collapsable_menu={state.collapsable_menu}
-                                    handleChange={handleChange}
-                                />
-                            </Grid>
-                        </Fragment>
-                    )}
-                <Footer className={state.top_menu ? 'footerStyleTwo' : ''} />
-                <PopupChat />
-            </Fullscreen>
-        </Fragment>
-    );
+/**
+ * Short description shown under the page title. Keeping it next to the route
+ * table means every screen gets the same header rhythm without each page
+ * having to render its own hero.
+ */
+const PAGE_META = {
+  Dashboard: 'Live overview of arrivals, departures and booking momentum.',
+  'Add Booking': 'Register a guest stay and assign a room in one pass.',
+  'View Booking': 'Search the live booking list, check guests in and out.',
+  'Edit Booking': 'Update guest details, dates, room and folio.',
+  'Add Room': 'Add a sellable room with its rate and amenities.',
+  'View Rooms': 'Monitor availability, capacity and nightly rates.',
+  'Edit Room': 'Update the room details, status and pricing.',
+  'Add Item': 'Add a stock item with its reorder threshold.',
+  'View Inventory': 'Track stock levels and low-stock items.',
+  'Edit Item': 'Adjust quantity, category and reorder threshold.',
+  Reports: 'Occupancy, revenue and stock insights across the property.',
+  Profile: 'Property identity and the staff profile used in the app.',
 };
 
-function mapDispatchToProps(dispatch) {
-    return {};
-}
+/**
+ * Authenticated application shell: sidebar, top bar, page heading and content.
+ */
+export const PrivateRoute = ({ component: Component, title, ...props }) => {
+  const fullScreenHandle = useFullScreenHandle();
+  const [menuOpen, setMenuOpen] = useState(false);
 
-const mapStateToProps = createStructuredSelector({});
+  const toggleMenu = () => setMenuOpen(open => !open);
 
-const withConnect = connect(
-    mapStateToProps,
-    mapDispatchToProps,
-);
+  const toggleFullScreen = () => {
+    if (fullScreenHandle.active) {
+      fullScreenHandle.exit();
+    } else {
+      fullScreenHandle.enter();
+    }
+  };
 
-export default compose(withConnect)(PrivateRoute);
+  return (
+    <div className="appShell">
+      <SidebarNav colupsMenuHandler={toggleMenu} open={menuOpen} />
+
+      <div className="appContent">
+        <Header
+          colupsMenuHandler={toggleMenu}
+          fullScreenHandler={toggleFullScreen}
+        />
+
+        <main className="appMain">
+          <div className="appPageHead hqReveal">
+            <div className="appPageHead__main">
+              <div className="appBreadcrumb">
+                <span>HotelsQuad</span>
+                <ChevronRight size={13} />
+                <span className="appBreadcrumb__current">{title}</span>
+              </div>
+
+              <h1 className="appTitle">{title}</h1>
+
+              <p className="appSubtitle">
+                {PAGE_META[title] ||
+                  'Manage the property from one live, connected workspace.'}
+              </p>
+            </div>
+
+            <div className="appPageHead__aside">
+              <span className="appDateChip">
+                <CalendarDays size={15} />
+                {moment().format('ddd, D MMM YYYY')}
+              </span>
+              <span className="appLiveChip">
+                <span className="appLiveChip__dot" />
+                Live data
+              </span>
+            </div>
+          </div>
+
+          <FullScreen handle={fullScreenHandle}>
+            <div className="appRoute hqReveal hqReveal--delay-1">
+              <Route
+                {...props}
+                exact
+                render={routeProps => <Component {...routeProps} />}
+              />
+            </div>
+          </FullScreen>
+        </main>
+
+        <Footer />
+      </div>
+    </div>
+  );
+};
+
+export default PrivateRoute;

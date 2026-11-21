@@ -1,72 +1,139 @@
-import React, { Component } from 'react';
+import React from 'react';
 import {
-    BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LabelList,
 } from 'recharts';
-import { Grid } from '@material-ui/core'
+import { Grid } from '@material-ui/core';
 
 import '../style.scss';
 
-const data = [
-    {
-        name: 'Jan', Lost: 500, Organic: 240, Paid: 240,
-    },
-    {
-        name: 'Feb', Lost: 300, Organic: 139, Paid: 221,
-    },
-    {
-        name: 'Mar', Lost: 200, Organic: 980, Paid: 229,
-    },
-    {
-        name: 'Apr', Lost: 278, Organic: 390, Paid: 200,
-    },
-    {
-        name: 'May', Lost: 189, Organic: 260, Paid: 218,
-    },
-    {
-        name: 'Jun', Lost: 239, Organic: 150, Paid: 150,
-    },
-    {
-        name: 'Jul', Lost: 349, Organic: 300, Paid: 310,
-    },
-    {
-        name: 'Aug', Lost: 349, Organic: 250, Paid: 35,
-    },
-    {
-        name: 'Sep', Lost: 349, Organic: 150, Paid: 150,
-    },
-    {
-        name: 'Oct', Lost: 349, Organic: 330, Paid: 190,
-    },
-    {
-        name: 'Nov', Lost: 349, Organic: 130, Paid: 200,
-    },
-    {
-        name: 'Dec', Lost: 349, Organic: 230, Paid: 290,
-    },
-];
+const ChartTooltip = ({ active, payload, label, series = [], formatter }) => {
+  if (!active || !payload || !payload.length) return null;
 
-class BarRechart extends Component {
+  return (
+    <div className="chartTooltip">
+      <strong className="chartTooltip__label">{label}</strong>
+      {payload.map(entry => {
+        const item = series.find(seriesItem => seriesItem.key === entry.dataKey);
+        const color = item ? item.color : '#2F5BEA';
 
-    render() {
         return (
-            <Grid className="responsiveRechart">
-                <ResponsiveContainer>
-                    <BarChart
-                        data={data}
-                    >
-                        <CartesianGrid vertical={false} stroke="#f1f1f1" strokeDasharray="5" />
-                        <XAxis axisLine={false} tickLine={false} tickMargin={10} dataKey="name" tick={{ fill: '#878AA0', fontSize: '14px' }} />
-                        <YAxis axisLine={false} tickLine={false} tickMargin={10} tick={{ fill: '#878AA0', fontSize: '14px' }} />
-                        <Tooltip cursor={{fill: '#f9f9f9'}}/>
-                        <Legend align="right" verticalAlign="top" margin={{ bottom: 0 }} />
-                        <Bar dataKey="Organic" stackId="a" barSize={5} fill="#BD20D3" />
-                        <Bar dataKey="Paid" stackId="a" barSize={5} fill="#F1682C" />
-                        <Bar dataKey="Lost" stackId="a" barSize={5} fill="#0EB7FE" />
-                    </BarChart>
-                </ResponsiveContainer>
-            </Grid>
+          <span className="chartTooltip__row" key={entry.dataKey}>
+            <i style={{ background: color }} />
+            <em>{entry.name}</em>
+            <b>{formatter ? formatter(entry.value) : entry.value}</b>
+          </span>
         );
-    }
-}
+      })}
+    </div>
+  );
+};
 
-export default BarRechart
+/**
+ * Bar chart.
+ *
+ * Props:
+ *  - data:            rows with a `name` (x axis) and the keys referenced by `series`
+ *  - series:          `[{ key, name, color }]`
+ *  - stacked:         stack the bars instead of grouping them
+ *  - showLegend:      render the recharts legend inside the plot area
+ *  - showLabels:      print the value above each bar
+ *  - maxBarSize:      cap the bar width (bars stay readable with few categories)
+ *  - tooltipFormatter: formats values inside the custom tooltip
+ */
+const BarRechart = ({
+  data = [],
+  series = [],
+  stacked = true,
+  showLegend = true,
+  showLabels = false,
+  maxBarSize = 28,
+  height,
+  animate = true,
+  yTickFormatter,
+  labelFormatter,
+  tooltipFormatter,
+}) => (
+  <Grid className="responsiveRechart" style={height ? { height } : undefined}>
+    <ResponsiveContainer>
+      <BarChart
+        data={data}
+        barGap={4}
+        barCategoryGap="26%"
+        margin={{ top: 22, right: 16, left: yTickFormatter ? 4 : 0, bottom: 0 }}
+      >
+        <defs>
+          {series.map(item => (
+            <linearGradient
+              key={item.key}
+              id={`hqBar-${item.key}-${String(item.color).replace('#', '')}`}
+              x1="0"
+              y1="0"
+              x2="0"
+              y2="1"
+            >
+              <stop offset="0%" stopColor={item.color} stopOpacity={1} />
+              <stop offset="100%" stopColor={item.color} stopOpacity={0.62} />
+            </linearGradient>
+          ))}
+        </defs>
+        <CartesianGrid vertical={false} stroke="#eceff9" strokeDasharray="4 6" />
+        <XAxis
+          axisLine={false}
+          tickLine={false}
+          tickMargin={10}
+          dataKey="name"
+          tick={{ fill: '#8791a9', fontSize: 12 }}
+          padding={{ left: 8, right: 8 }}
+        />
+        <YAxis
+          axisLine={false}
+          tickLine={false}
+          tickMargin={10}
+          width={yTickFormatter ? 70 : 52}
+          tick={{ fill: '#8791a9', fontSize: 12 }}
+          allowDecimals={false}
+          tickFormatter={yTickFormatter}
+        />
+        <Tooltip
+          cursor={{ fill: 'rgba(47, 91, 234, 0.06)', radius: 8 }}
+          content={<ChartTooltip series={series} formatter={tooltipFormatter} />}
+        />
+        {showLegend && (
+          <Legend
+            align="right"
+            verticalAlign="top"
+            iconType="circle"
+            iconSize={9}
+            wrapperStyle={{ paddingBottom: 12, fontSize: 12 }}
+          />
+        )}
+        {series.map(item => (
+          <Bar
+            key={item.key}
+            isAnimationActive={animate}
+            animationDuration={650}
+            dataKey={item.key}
+            name={item.name || item.key}
+            fill={`url(#hqBar-${item.key}-${String(item.color).replace('#', '')})`}
+            maxBarSize={maxBarSize}
+            stackId={stacked ? 'a' : undefined}
+            radius={[7, 7, 0, 0]}
+          >
+            {showLabels && (
+              <LabelList
+                dataKey={item.key}
+                position="top"
+                offset={8}
+                fill="#526083"
+                fontSize={11}
+                formatter={labelFormatter || (value => (value ? value : ''))}
+              />
+            )}
+          </Bar>
+        ))}
+      </BarChart>
+    </ResponsiveContainer>
+  </Grid>
+);
+
+export default BarRechart;

@@ -1,0 +1,32 @@
+// ---------------------------------------------------------------------------
+// Themify icon set
+//
+// The template font files are not bundled with this repository; the icons are
+// mapped onto Font Awesome so the markup keeps working.
+// ---------------------------------------------------------------------------
+
+[class^='ti-'],
+[class*=' ti-'] {
+  display: inline-block;
+  font: normal normal normal 14px/1 FontAwesome;
+  font-size: inherit;
+  text-rendering: auto;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.ti-arrow-right::before {
+  content: '\f061';
+}
+
+.ti-arrow-left::before {
+  content: '\f060';
+}
+
+.ti-close::before {
+  content: '\f00d';
+}
+
+.ti-settings::before {
+  content: '\f013';
+}

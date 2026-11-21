@@ -1,0 +1,37 @@
+// ---------------------------------------------------------------------------
+// Icofont icon set
+//
+// The original template shipped an icon font. The font files are not part of
+// this repository, so the handful of class names used by the application are
+// mapped onto Font Awesome (bundled through `font-awesome`).
+// ---------------------------------------------------------------------------
+
+[class^='icofont-'],
+[class*=' icofont-'] {
+  display: inline-block;
+  font: normal normal normal 14px/1 FontAwesome;
+  font-size: inherit;
+  text-rendering: auto;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.icofont-ui-settings::before {
+  content: '\f013';
+}
+
+.icofont-close-line::before {
+  content: '\f00d';
+}
+
+.icofont-ui-home::before {
+  content: '\f015';
+}
+
+.icofont-ui-user::before {
+  content: '\f007';
+}
+
+.icofont-ui-search::before {
+  content: '\f002';
+}

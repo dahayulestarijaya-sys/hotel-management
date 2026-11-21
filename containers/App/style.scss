@@ -1,19 +1,13 @@
 .responsiveRechart {
   width: 100%;
   height: 300px;
-  margin-top: 42px;
-  .recharts-default-legend {
-    margin-top: -70px !important;
-    @media (max-width: 767px) {
-      margin-top: -40px !important;
-    }
-  }
+  margin-top: 8px;
 }
 .lineRechart {
   width: 100%;
   height: 320px;
   @media (max-width: 767px) {
-    margin-top: 50px;
+    margin-top: 20px;
   }
 }
 .customTooltip {

@@ -1,64 +1,37 @@
 import React, { Fragment } from 'react';
-import { Grid } from '@material-ui/core'
-import './style.scss'
+import { Grid } from '@material-ui/core';
+import './style.scss';
 
-const featureds = {
-    booking: {
-        value: '78',
-        name:'Total Booking',
-    },
-    room: {
-        value: '284',
-        name: 'Available Rooms',
-    },
-    checkin: {
-        value: '84',
-        name: 'CheckIn',
-    },
-    checkout: {
-        value: '15',
-        name: 'CheckOut',
-    },
-}
+/**
+ * Row of KPI cards. `items` is a list of
+ * `{ key, name, value, icon, hint, tone }` objects so the dashboard can feed it
+ * live booking metrics plus a lucide icon, a small caption and an accent tone.
+ */
+const AnalyticFeatured = ({ items = [] }) => (
+  <Fragment>
+    {items.map(item => {
+      const Icon = item.icon;
+      const toneClass = item.tone ? ` analyticFeaturedWrap--${item.tone}` : '';
 
+      return (
+        <Grid item lg={3} sm={6} xs={6} key={item.key}>
+          <Grid className={`analyticFeaturedWrap${toneClass}`}>
+            <span className="analyticFeaturedGlow" aria-hidden="true" />
+            <Grid className="analyticFeaturedContent">
+              <p>{item.name}</p>
+              <h3>{item.value}</h3>
+              {item.hint && <span className="analyticFeaturedHint">{item.hint}</span>}
+            </Grid>
+            {Icon && (
+              <span className="analyticFeaturedIcon">
+                <Icon size={20} />
+              </span>
+            )}
+          </Grid>
+        </Grid>
+      );
+    })}
+  </Fragment>
+);
 
-const AnalyticFeatured = () => {
-    const { booking, room, checkin, checkout } = featureds;
-    return (
-        <Fragment>
-            <Grid item lg={3} sm={6} xs={12}>
-                <Grid className="analyticFeaturedWrap">
-                    <Grid className="analyticFeaturedContent">
-                        <p>{booking.name}</p>
-                        <h3>{booking.value}</h3>
-                    </Grid>
-                </Grid>
-            </Grid>
-            <Grid item lg={3} sm={6} xs={12}>
-                <Grid className="analyticFeaturedWrap">
-                    <Grid className="analyticFeaturedContent">
-                        <p>{room.name}</p>
-                        <h3>{room.value}</h3>
-                    </Grid>
-                </Grid>
-            </Grid>
-            <Grid item lg={3} sm={6} xs={12}>
-                <Grid className="analyticFeaturedWrap">
-                    <Grid className="analyticFeaturedContent">
-                        <p>{checkin.name}</p>
-                        <h3>{checkin.value}</h3>
-                    </Grid>
-                </Grid>
-            </Grid>
-            <Grid item lg={3} sm={6} xs={12}>
-                <Grid className="analyticFeaturedWrap">
-                    <Grid className="analyticFeaturedContent">
-                        <p>{checkout.name}</p>
-                        <h3>{checkout.value}</h3>
-                    </Grid>
-                </Grid>
-            </Grid>
-        </Fragment>
-    );
-}
 export default AnalyticFeatured;
